@@ -3,21 +3,30 @@ const mongoose = require('mongoose');
 const userSchema = mongoose.Schema({
     // General Info
     name: { type: String, required: true },
-    email: { type: String, required: true, unique: true },
+    
+    // Email is optional for students now, as they login with Enrollment
+    email: { 
+        type: String, 
+        unique: true, 
+        sparse: true // Allows this to be null/empty without errors
+    },
+    
     password: { type: String, required: true },
     
-    // The Critical Part: differentiating roles
     role: { 
         type: String, 
         enum: ['student', 'coordinator', 'supervisor', 'board'], 
-        required: true 
+        default: 'student'
     },
 
-    // Specific to Students
-    enrollmentId: { type: String },
-    department: { type: String },
+    // CHANGED: enrollmentId -> enrollment (To match your Frontend logic)
+    enrollment: { 
+        type: String, 
+        unique: true, 
+        sparse: true 
+    },
 
-    // Specific to Board/Faculty
+    department: { type: String },
     facultyId: { type: String },
 
 }, { timestamps: true });
