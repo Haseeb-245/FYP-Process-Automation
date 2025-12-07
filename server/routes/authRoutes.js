@@ -45,4 +45,57 @@ router.post('/login', async (req, res) => {
   }
 });
 
+router.post('/create-test-coordinator', async (req, res) => {
+  try {
+    // Check if coordinator already exists
+    const existingCoordinator = await User.findOne({ email: 'coordinator@uni.edu' });
+    
+    if (existingCoordinator) {
+      return res.json({ 
+        success: true, 
+        message: "Coordinator already exists",
+        user: {
+          name: existingCoordinator.name,
+          email: existingCoordinator.email,
+          role: existingCoordinator.role,
+          department: existingCoordinator.department
+        }
+      });
+    }
+
+    // Create test coordinator
+    const coordinator = new User({
+      name: "Dr. Sarah Coordinator",
+      email: "coordinator@uni.edu",
+      password: "coordinator123", // In production, use bcrypt to hash passwords!
+      role: "coordinator",
+      department: "Computer Science",
+      facultyId: "CS-001",
+      phone: "123-456-7890",
+      office: "Room 101, CS Building"
+    });
+
+    await coordinator.save();
+
+    res.json({ 
+      success: true, 
+      message: "Test coordinator created successfully!",
+      coordinator: {
+        name: coordinator.name,
+        email: coordinator.email,
+        password: "coordinator123", // Shows plain password for testing
+        role: coordinator.role,
+        department: coordinator.department
+      }
+    });
+  } catch (error) {
+    console.error("Create coordinator error:", error);
+    res.status(500).json({ 
+      success: false, 
+      message: "Failed to create test coordinator",
+      error: error.message 
+    });
+  }
+});
+
 module.exports = router;

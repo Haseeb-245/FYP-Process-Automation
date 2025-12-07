@@ -21,51 +21,118 @@ const Landing = () => {
   const handleLogin = async (e) => {
     e.preventDefault();
     
-    // --- 1. STUDENT LOGIN LOGIC (Connected to Backend) ---
+    // --- 1. STUDENT LOGIN LOGIC ---
     if (selectedRole === 'student') {
-        setLoading(true);
-        try {
-            // Send request to your Node.js Server
-            const response = await fetch('http://localhost:5000/api/auth/login', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                // Map the form 'id' to 'enrollment' which the backend expects
-                body: JSON.stringify({ 
-                    enrollment: credentials.id, 
-                    password: credentials.password 
-                }),
-            });
+      setLoading(true);
+      try {
+        const response = await fetch('http://localhost:5000/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            enrollment: credentials.id, 
+            password: credentials.password 
+          }),
+        });
 
-            const data = await response.json();
+        const data = await response.json();
 
-            if (response.ok) {
-                // --- CRITICAL FIX: Save User to LocalStorage ---
-                // This gives the dashboard the "ID Card" it needs
-                localStorage.setItem('userInfo', JSON.stringify(data));
-                
-                console.log("Login Successful:", data);
-                navigate('/student/dashboard');
-            } else {
-                alert("Login Failed: " + (data.message || "Invalid credentials"));
-            }
-
-        } catch (error) {
-            console.error("Login Error:", error);
-            alert("Server error. Is the backend running on port 5000?");
-        } finally {
-            setLoading(false);
+        if (response.ok) {
+          localStorage.setItem('userInfo', JSON.stringify(data));
+          console.log("Student Login Successful:", data);
+          navigate('/student/dashboard');
+        } else {
+          alert("Login Failed: " + (data.message || "Invalid credentials"));
         }
-        return; // Stop here for students
+      } catch (error) {
+        console.error("Login Error:", error);
+        alert("Server error. Is the backend running on port 5000?");
+      } finally {
+        setLoading(false);
+      }
+      return; // Stop here for students
     }
 
-    // --- 2. OTHER ROLES (Mock Logic for now) ---
-    console.log(`Logging in as ${selectedRole} ${boardSubRole ? `(${boardSubRole})` : ''}`, credentials);
+    // --- 2. COORDINATOR LOGIN LOGIC ---
+    if (selectedRole === 'coordinator') {
+      setLoading(true);
+      try {
+        const response = await fetch('http://localhost:5000/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            email: credentials.id, // Coordinator uses email
+            password: credentials.password 
+          }),
+        });
 
-    if (selectedRole === 'board') navigate('/board/dashboard');
-    if (selectedRole === 'coordinator') alert("Teammate's Module (Coordinator)");
-    if (selectedRole === 'supervisor') alert("Teammate's Module (Supervisor)");
+        const data = await response.json();
+
+        if (response.ok) {
+          // Check if the user is actually a coordinator
+          if (data.role !== 'coordinator') {
+            alert(`Access Denied: This account is not a coordinator. Role: ${data.role}`);
+            setLoading(false);
+            return;
+          }
+
+          localStorage.setItem('userInfo', JSON.stringify(data));
+          console.log("Coordinator Login Successful:", data);
+          navigate('/coordinator/dashboard');
+        } else {
+          alert("Login Failed: " + (data.message || "Invalid credentials"));
+        }
+      } catch (error) {
+        console.error("Login Error:", error);
+        alert("Server error. Is the backend running on port 5000?");
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+
+    // --- 3. SUPERVISOR LOGIN LOGIC ---
+    if (selectedRole === 'supervisor') {
+      setLoading(true);
+      try {
+        const response = await fetch('http://localhost:5000/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            email: credentials.id,
+            password: credentials.password 
+          }),
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          if (data.role !== 'supervisor') {
+            alert(`Access Denied: This account is not a supervisor. Role: ${data.role}`);
+            setLoading(false);
+            return;
+          }
+
+          localStorage.setItem('userInfo', JSON.stringify(data));
+          console.log("Supervisor Login Successful:", data);
+          navigate('/supervisor/dashboard');
+        } else {
+          alert("Login Failed: " + (data.message || "Invalid credentials"));
+        }
+      } catch (error) {
+        console.error("Login Error:", error);
+        alert("Server error. Is the backend running on port 5000?");
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+
+    // --- 4. BOARD LOGIN (Still Dummy) ---
+    if (selectedRole === 'board') {
+      console.log(`Logging in as ${selectedRole} ${boardSubRole ? `(${boardSubRole})` : ''}`, credentials);
+      navigate('/board/dashboard');
+      return;
+    }
   };
 
   return (
@@ -93,8 +160,8 @@ const Landing = () => {
             onClick={() => handleRoleSelect('student')}
           />
 
-           {/* Card 2: FYP Board */}
-           <RoleCard 
+          {/* Card 2: FYP Board */}
+          <RoleCard 
             title="FYP Board" 
             icon="⚖️" 
             color="group-hover:text-red-400"
@@ -153,11 +220,11 @@ const Landing = () => {
                   </div>
                 </button>
                 <button 
-                   onClick={() => setBoardSubRole('external')}
-                   className="w-full p-4 bg-slate-700 hover:bg-slate-600 rounded-xl text-left flex items-center gap-4 transition-all border border-transparent hover:border-red-400/50"
+                  onClick={() => setBoardSubRole('external')}
+                  className="w-full p-4 bg-slate-700 hover:bg-slate-600 rounded-xl text-left flex items-center gap-4 transition-all border border-transparent hover:border-red-400/50"
                 >
-                   <span className="text-2xl">🌍</span>
-                   <div>
+                  <span className="text-2xl">🌍</span>
+                  <div>
                     <div className="font-bold text-white">External Examiner</div>
                     <div className="text-xs text-slate-400">Final year project defense</div>
                   </div>

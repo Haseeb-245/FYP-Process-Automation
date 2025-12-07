@@ -1,48 +1,95 @@
 const mongoose = require('mongoose');
 
-const projectSchema = new mongoose.Schema({
+const ProjectSchema = new mongoose.Schema({
+  // Student who submitted
   leaderId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: true
   },
-  // --- PHASE 1: PROPOSAL ---
-  documentUrl: { type: String, required: true },
-  supervisorName: { type: String, default: "Not Assigned" },
-  groupMembers: { type: [String], default: [] },
   
-  // --- PHASE 2: DEFENSE (NEW) ---
-  defenseDate: { 
-    type: Date, 
-    default: null // Activity 2.1: Assigned by Coordinator
-  },
-  presentationUrl: { 
-    type: String, 
-    default: null // Activity 2.2: Student uploads PPT
-  },
-  defenseFeedback: {
+  // Phase 1: Proposal
+  documentUrl: {
     type: String,
-    default: "" // Activity 2.3: Comments from Panel
+    required: true
   },
-
-  // --- GLOBAL STATUS ---
+  
+  // Proposed supervisor (from student's proposal document)
+  proposedSupervisorName: {
+    type: String,
+    default: null
+  },
+  
+  // Actual supervisor assigned by coordinator
+  supervisorId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null
+  },
+  
+  // Supervisor consent status
+  supervisorConsent: {
+    type: String,
+    enum: ['Pending', 'Approved', 'Rejected'],
+    default: null
+  },
+  
+  supervisorFeedback: {
+    type: String,
+    default: null
+  },
+  
   status: {
     type: String,
     enum: [
-        // Phase 1
-        'Pending Coordinator Review', 
-        'Modifications Required', 
-        'Approved', // Ready for Phase 2
-        'Rejected',
-        
-        // Phase 2
-        'Scheduled for Defense', 
-        'Defense Cleared', 
-        'Defense Changes Required'
+      'Pending Coordinator Review',
+      'Approved',
+      'Rejected',
+      'Changes Required',
+      'Pending Supervisor Consent',
+      'Supervisor Approved',
+      'Supervisor Rejected',
+      'Scheduled for Defense',
+      'Defense Cleared',
+      'Defense Changes Required'
     ],
     default: 'Pending Coordinator Review'
   },
-  submittedAt: { type: Date, default: Date.now }
-});
+  
+  // Coordinator feedback when reviewing proposal
+  coordinatorFeedback: {
+    type: String,
+    default: null
+  },
+  
+  // Phase 2: Defense
+  defenseDate: {
+    type: Date,
+    default: null
+  },
+  
+  presentationUrl: {
+    type: String,
+    default: null
+  },
+  
+  // Panel feedback after defense
+  defenseFeedback: {
+    type: String,
+    default: null
+  },
+  
+  // Additional fields
+  panelMembers: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  }],
+  
+  grade: {
+    type: String,
+    default: null
+  }
+  
+}, { timestamps: true });
 
-module.exports = mongoose.model('Project', projectSchema);
+module.exports = mongoose.model('Project', ProjectSchema);

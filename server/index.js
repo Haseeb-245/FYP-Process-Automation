@@ -1,41 +1,40 @@
+// index.js
 const express = require('express');
 const dotenv = require('dotenv');
 const cors = require('cors');
+const path = require('path');
 const connectDB = require('./config/db');
-const path = require('path'); // Import 'path' to handle file paths
 
-// Import Routes
-const authRoutes = require('./routes/authRoutes');
-const projectRoutes = require('./routes/projectRoutes'); // Import the new project routes
-
-// Load config
+// Load environment variables
 dotenv.config();
 
-// Connect to Database
+// Connect to MongoDB
 connectDB();
 
 const app = express();
 
 // Middleware
-app.use(express.json()); // Allows sending JSON data
-app.use(cors()); // Allows frontend to communicate with backend
+app.use(express.json()); // Parse JSON request body
+app.use(cors()); // Allow cross-origin requests
 
-// --- NEW: Make the 'uploads' folder accessible publicly ---
-// This allows you to view uploaded files via URL (e.g., localhost:5000/uploads/filename.pdf)
+// Serve uploaded files publicly
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// Basic Route to check if server is working
+// Import Routes
+const authRoutes = require('./routes/authRoutes');
+const projectRoutes = require('./routes/projectRoutes');
+
+// Mount Routes
+app.use('/api/auth', authRoutes);
+app.use('/api/projects', projectRoutes);
+
+// Basic route to check server status
 app.get('/', (req, res) => {
-    res.send('FYP Management System API is running...');
+  res.send('FYP Management System API is running...');
 });
 
-// --- MOUNT ROUTES ---
-// (These must be BEFORE app.listen)
-app.use('/api/auth', authRoutes);
-app.use('/api/projects', projectRoutes); // Connects the upload logic
-
+// Start server
 const PORT = process.env.PORT || 5000;
-
 app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
+  console.log(`Server running on port ${PORT}`);
 });
