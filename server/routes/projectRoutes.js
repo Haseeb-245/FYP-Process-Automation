@@ -152,4 +152,23 @@ router.put('/defense-decision/:id', async (req, res) => {
     }
 });
 
+// ... existing codes ...
+
+// 8. GET Projects Ready for Defense (For Panel Dashboard)
+router.get('/defense-pending', async (req, res) => {
+  try {
+    // We want projects that are either scheduled OR need re-checking
+    const projects = await Project.find({ 
+      status: { $in: ['Scheduled for Defense', 'Defense Changes Required'] } 
+    }).populate('leaderId', 'name enrollment email');
+
+    res.json(projects);
+  } catch (error) {
+    console.error("Fetch Defense Error:", error);
+    res.status(500).json({ message: 'Server Error' });
+  }
+});
+
+
+
 module.exports = router;
