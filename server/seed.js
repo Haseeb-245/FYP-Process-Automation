@@ -11,7 +11,7 @@ const importData = async () => {
     // 1. Clear everything
     await User.deleteMany();
 
-    // 2. Create the User with "enrollment" and "123"
+    // 2. Create STUDENT
     await User.create({
       name: "Huzaifa Imran",
       enrollment: "01-131232-033", 
@@ -19,7 +19,19 @@ const importData = async () => {
       role: "student"
     });
 
-    console.log("✅ Database Updated! You can login now.");
+    // 3. Create PANEL MEMBER (For Phase 2 Testing)
+    await User.create({
+      name: "Dr. Panel Member",
+      email: "panel@uni.edu", // Login using Email
+      password: "123",
+      role: "board",
+      facultyId: "FAC-PANEL-01"
+    });
+
+    console.log("✅ Database Seeded!");
+    console.log("👉 Student: 01-131232-033 / 123");
+    console.log("👉 Panel:   panel@uni.edu / 123");
+    
     process.exit();
   } catch (error) {
     console.error(error);

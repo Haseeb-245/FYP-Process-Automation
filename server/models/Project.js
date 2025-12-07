@@ -6,36 +6,43 @@ const projectSchema = new mongoose.Schema({
     ref: 'User',
     required: true
   },
-  // We store the file path here
-  documentUrl: {
+  // --- PHASE 1: PROPOSAL ---
+  documentUrl: { type: String, required: true },
+  supervisorName: { type: String, default: "Not Assigned" },
+  groupMembers: { type: [String], default: [] },
+  
+  // --- PHASE 2: DEFENSE (NEW) ---
+  defenseDate: { 
+    type: Date, 
+    default: null // Activity 2.1: Assigned by Coordinator
+  },
+  presentationUrl: { 
     type: String, 
-    required: true
+    default: null // Activity 2.2: Student uploads PPT
   },
-  // Activity 1.5: Supervisor Name (Student fills this in form, or selects in UI)
-  supervisorName: {
+  defenseFeedback: {
     type: String,
-    default: "Not Assigned"
+    default: "" // Activity 2.3: Comments from Panel
   },
-  // Activity 1.6: Coordinator needs to know who is in the group
-  groupMembers: {
-    type: [String], // Array of Student IDs or Names
-    default: []
-  },
-  // Activity 1.4: Coordinator Decision
+
+  // --- GLOBAL STATUS ---
   status: {
     type: String,
     enum: [
-        'Pending Coordinator Review', // <--- Default after upload
+        // Phase 1
+        'Pending Coordinator Review', 
         'Modifications Required', 
-        'Approved', 
-        'Rejected'
+        'Approved', // Ready for Phase 2
+        'Rejected',
+        
+        // Phase 2
+        'Scheduled for Defense', 
+        'Defense Cleared', 
+        'Defense Changes Required'
     ],
     default: 'Pending Coordinator Review'
   },
-  submittedAt: {
-    type: Date,
-    default: Date.now
-  }
+  submittedAt: { type: Date, default: Date.now }
 });
 
 module.exports = mongoose.model('Project', projectSchema);

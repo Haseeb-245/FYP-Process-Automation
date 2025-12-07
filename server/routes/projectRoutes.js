@@ -5,94 +5,151 @@ const Project = require('../models/Project');
 const path = require('path');
 
 // --- CONFIGURATION ---
-// 1. Configure Multer (Where to save files)
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    cb(null, 'uploads/'); // Ensure this folder exists
+    cb(null, 'uploads/');
   },
   filename: function (req, file, cb) {
-    // Save as: proposal-timestamp.ext
-    cb(null, 'proposal-' + Date.now() + path.extname(file.originalname));
+    // Save with timestamp to avoid name conflicts
+    cb(null, 'file-' + Date.now() + path.extname(file.originalname));
   }
 });
-
 const upload = multer({ storage: storage });
 
-// --- STUDENT ROUTES ---
+// ==========================================
+//              STUDENT ROUTES
+// ==========================================
 
-// 2. The Upload Route (Activity 1.3)
-// POST /api/projects/upload
+// 1. Submit Proposal (Phase 1)
 router.post('/upload', upload.single('file'), async (req, res) => {
   try {
-    const { studentId } = req.body; // Received from Frontend
+    const { studentId } = req.body;
     const file = req.file;
+    if (!file) return res.status(400).json({ message: 'Please upload a file' });
 
-    if (!file) {
-      return res.status(400).json({ message: 'Please upload a file' });
+    // Check if project already exists for this student
+    let project = await Project.findOne({ leaderId: studentId });
+
+    if (project) {
+        // If exists, just update the proposal file (Resubmission)
+        project.documentUrl = file.path;
+        project.status = 'Pending Coordinator Review';
+        await project.save();
+    } else {
+        // Create new
+        project = new Project({
+            leaderId: studentId,
+            documentUrl: file.path,
+            status: 'Pending Coordinator Review'
+        });
+        await project.save();
     }
 
-    // Create the DB record matching the new Phase 1 Schema
-    const newProject = new Project({
-      leaderId: studentId,       // Maps studentId to leaderId
-      documentUrl: file.path,
-      status: 'Pending Coordinator Review' // Initial Status
-    });
-
-    await newProject.save();
-
-    res.status(201).json({ 
-        message: 'Proposal submitted to Coordinator successfully!', 
-        project: newProject 
-    });
-    
+    res.status(201).json({ message: 'Proposal submitted!', project });
   } catch (error) {
     console.error("Upload Error:", error);
-    res.status(500).json({ message: 'Server error during upload' });
+    res.status(500).json({ message: 'Server error' });
   }
 });
 
-// --- COORDINATOR ROUTES (For your Teammate) ---
+// 2. Fetch My Project Status (Used by Student Dashboard)
+router.get('/my-project/:studentId', async (req, res) => {
+    try {
+        const project = await Project.findOne({ leaderId: req.params.studentId });
+        if (!project) return res.json(null); // No project yet
+        res.json(project);
+    } catch (error) {
+        res.status(500).json({ message: "Server Error" });
+    }
+});
 
-// 3. GET Pending Proposals (Activity 1.4)
-// This lets the Coordinator see everyone who submitted a file
-// GET /api/projects/pending
+// 3. Upload Presentation (Phase 2 - Activity 2.2)
+router.post('/upload-ppt', upload.single('file'), async (req, res) => {
+    try {
+      const { studentId } = req.body;
+      const file = req.file;
+  
+      if (!file) return res.status(400).json({ message: 'Please upload a PPT/PDF' });
+  
+      // Find project and update presentation link
+      const project = await Project.findOneAndUpdate(
+        { leaderId: studentId },
+        { presentationUrl: file.path },
+        { new: true }
+      );
+  
+      res.json({ message: 'Presentation uploaded successfully!', project });
+    } catch (error) {
+      console.error("PPT Upload Error:", error);
+      res.status(500).json({ message: 'Server error' });
+    }
+});
+
+// ==========================================
+//           COORDINATOR ROUTES
+// ==========================================
+
+// 4. Get Pending Proposals
 router.get('/pending', async (req, res) => {
   try {
-    // Find all projects waiting for review
     const projects = await Project.find({ status: 'Pending Coordinator Review' })
-      .populate('leaderId', 'name enrollment email'); 
-      // .populate() is magic: it fetches the Student's Name & ID using the leaderId link
-
+      .populate('leaderId', 'name enrollment email');
     res.json(projects);
   } catch (error) {
-    console.error("Fetch Pending Error:", error);
-    res.status(500).json({ message: 'Server Error fetching proposals' });
+    res.status(500).json({ message: 'Server Error' });
   }
 });
 
-// 4. Update Project Status (Activity 1.4 Decision)
-// This lets the Coordinator Approve or Reject
-// PUT /api/projects/decision/:id
+// 5. Approve/Reject Proposal (Phase 1 Decision)
 router.put('/decision/:id', async (req, res) => {
   try {
-    const { status } = req.body; // e.g., "Approved" or "Rejected" or "Modifications Required"
-    
-    // Find project by ID and update the status
-    const project = await Project.findByIdAndUpdate(
-      req.params.id, 
-      { status: status },
-      { new: true } // Returns the updated object so the frontend sees the change
-    );
-
-    if (!project) {
-        return res.status(404).json({ message: "Project not found" });
-    }
-
-    res.json({ message: `Project status updated to ${status}`, project });
+    const { status } = req.body;
+    const project = await Project.findByIdAndUpdate(req.params.id, { status }, { new: true });
+    res.json({ message: `Project ${status}`, project });
   } catch (error) {
-    console.error("Decision Error:", error);
-    res.status(500).json({ message: 'Server Error updating status' });
+    res.status(500).json({ message: 'Server Error' });
   }
+});
+
+// 6. Assign Defense Date (Phase 2 - Activity 2.1)
+router.put('/assign-defense/:id', async (req, res) => {
+    try {
+        const { date } = req.body; // Expecting YYYY-MM-DD
+        const project = await Project.findByIdAndUpdate(
+            req.params.id, 
+            { 
+                defenseDate: date,
+                status: 'Scheduled for Defense' 
+            }, 
+            { new: true }
+        );
+        res.json({ message: "Defense Date Assigned", project });
+    } catch (error) {
+        res.status(500).json({ message: "Server Error" });
+    }
+});
+
+// ==========================================
+//             PANEL ROUTES
+// ==========================================
+
+// 7. Panel Decision (Phase 2 - Activity 2.3)
+router.put('/defense-decision/:id', async (req, res) => {
+    try {
+        const { status, feedback } = req.body; // 'Defense Cleared' or 'Defense Changes Required'
+        
+        const project = await Project.findByIdAndUpdate(
+            req.params.id, 
+            { 
+                status: status,
+                defenseFeedback: feedback
+            }, 
+            { new: true }
+        );
+        res.json({ message: "Panel decision recorded", project });
+    } catch (error) {
+        res.status(500).json({ message: "Server Error" });
+    }
 });
 
 module.exports = router;
