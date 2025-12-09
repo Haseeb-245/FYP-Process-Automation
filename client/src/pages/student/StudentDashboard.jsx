@@ -5,20 +5,30 @@ const StudentDashboard = () => {
   const navigate = useNavigate();
   const [student, setStudent] = useState(null);
   const [project, setProject] = useState(null);
-  const [file, setFile] = useState(null);
-  const [uploading, setUploading] = useState(false);
   const [loading, setLoading] = useState(true);
+  
+  // File States
+  const [file, setFile] = useState(null);
+  const [pptFile, setPptFile] = useState(null);
+  const [srsFile, setSrsFile] = useState(null);
+  const [sdsFile, setSdsFile] = useState(null);
+  const [finalFile, setFinalFile] = useState(null);
+
+  // UI States
+  const [uploading, setUploading] = useState(false);
   const [proposedSupervisor, setProposedSupervisor] = useState('');
+  
+  // Weekly Log
+  const [logContent, setLogContent] = useState("");
+  const [weekNo, setWeekNo] = useState(1);
 
   useEffect(() => {
     const userInfo = JSON.parse(localStorage.getItem('userInfo'));
-    
     if (!userInfo || userInfo.role !== 'student') {
       navigate('/');
       alert('Please login as Student first');
       return;
     }
-    
     setStudent(userInfo);
     fetchProjectStatus(userInfo._id);
   }, [navigate]);
@@ -29,6 +39,7 @@ const StudentDashboard = () => {
       const response = await fetch(`http://localhost:5000/api/projects/my-project/${studentId}`);
       const data = await response.json();
       setProject(data);
+      console.log("Project Data Loaded:", data); // Debugging
     } catch (error) {
       console.error('Error fetching project:', error);
     } finally {
@@ -36,35 +47,40 @@ const StudentDashboard = () => {
     }
   };
 
-  const handleFileUpload = async (e) => {
+  // --- Generic Upload Handler ---
+  const handleUpload = async (e, docType) => {
     e.preventDefault();
-    
-    if (!file) {
-      alert('Please select a file first!');
-      return;
-    }
+    const fileToUpload = 
+        docType === 'proposal' ? file : 
+        docType === 'ppt' ? pptFile :
+        docType === 'srs' ? srsFile :
+        docType === 'sds' ? sdsFile :
+        docType === 'final' ? finalFile : null;
 
+    if (!fileToUpload) { alert('Please select a file first!'); return; }
+    
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append('file', fileToUpload);
     formData.append('studentId', student._id);
-    if (proposedSupervisor) {
-      formData.append('proposedSupervisor', proposedSupervisor);
+    formData.append('docType', docType);
+    
+    if (docType === 'proposal' && proposedSupervisor) {
+        formData.append('proposedSupervisor', proposedSupervisor);
     }
 
     try {
       setUploading(true);
-      const response = await fetch('http://localhost:5000/api/projects/upload', {
-        method: 'POST',
-        body: formData,
+      const response = await fetch('http://localhost:5000/api/projects/upload-doc', { 
+        method: 'POST', 
+        body: formData 
       });
-
       const data = await response.json();
 
       if (response.ok) {
-        alert('✅ Proposal submitted successfully!');
+        alert('✅ Upload successful!');
+        // Clear inputs
+        setFile(null); setPptFile(null); setSrsFile(null); setSdsFile(null); setFinalFile(null);
         fetchProjectStatus(student._id);
-        setFile(null);
-        setProposedSupervisor('');
       } else {
         alert('❌ ' + (data.message || 'Upload failed'));
       }
@@ -76,347 +92,244 @@ const StudentDashboard = () => {
     }
   };
 
+  const submitLog = async () => {
+      await fetch('http://localhost:5000/api/projects/submit-log', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ studentId: student._id, weekNo, content: logContent })
+      });
+      alert("Log Saved!");
+      setLogContent("");
+      fetchProjectStatus(student._id);
+  };
+
   const handleLogout = () => {
     localStorage.removeItem('userInfo');
     navigate('/');
   };
 
+  // --- LOGIC HELPERS (ROBUST VERSION) ---
+
+  // 1. Is Phase 1 (Proposal) Complete?
+  const isPhase1Complete = (status) => {
+      const advancedStatuses = [
+          'Approved - Ready for Defense', 
+          'Scheduled for Defense', 
+          'Defense Cleared', 
+          'Defense Changes Required', 
+          'Proposal Approved', 
+          'Interim Scheduled', 
+          'Final Scheduled', 
+          'Completed'
+      ];
+      return advancedStatuses.includes(status);
+  };
+
+  // 2. Is Phase 2 (Defense) Active?
+  // It is active if Phase 1 is done, but Phase 3 hasn't started yet.
+  const isPhase2Active = (status) => {
+      const phase2Statuses = [
+          'Approved - Ready for Defense', 
+          'Scheduled for Defense', 
+          'Defense Changes Required'
+      ];
+      return phase2Statuses.includes(status);
+  };
+
+  // 3. Is Phase 3 (Development) Active?
+  const isPhase3Active = (status) => {
+      const phase3Statuses = ['Defense Cleared', 'Proposal Approved', 'Interim Scheduled'];
+      return phase3Statuses.includes(status);
+  };
+
+  // 4. Is Phase 4 (Final) Active?
+  const isPhase4Active = (status) => {
+      const phase4Statuses = ['Final Scheduled', 'Completed'];
+      return phase4Statuses.includes(status);
+  };
+
   const getStatusColor = (status) => {
-    switch(status) {
-      case 'Pending Coordinator Review': return 'bg-yellow-100 text-yellow-800 border-yellow-300';
-      case 'Approved': return 'bg-green-100 text-green-800 border-green-300';
-      case 'Rejected': return 'bg-red-100 text-red-800 border-red-300';
-      case 'Changes Required': return 'bg-orange-100 text-orange-800 border-orange-300';
-      case 'Pending Supervisor Consent': return 'bg-purple-100 text-purple-800 border-purple-300';
-      case 'Supervisor Approved': return 'bg-green-100 text-green-800 border-green-300';
-      case 'Supervisor Rejected': return 'bg-red-100 text-red-800 border-red-300';
-      default: return 'bg-gray-100 text-gray-800 border-gray-300';
-    }
+    if (status?.includes('Approved') || status?.includes('Cleared') || status?.includes('Completed') || status?.includes('Ready')) return 'bg-green-100 text-green-800 border-green-300';
+    if (status?.includes('Rejected') || status?.includes('Changes')) return 'bg-red-100 text-red-800 border-red-300';
+    if (status?.includes('Scheduled') || status?.includes('Waiting')) return 'bg-blue-100 text-blue-800 border-blue-300';
+    return 'bg-yellow-100 text-yellow-800 border-yellow-300';
   };
 
-  const getStatusMessage = (status) => {
-    switch(status) {
-      case 'Pending Coordinator Review': 
-        return '⏳ Your proposal is under review by the coordinator.';
-      case 'Approved': 
-        return '✅ Your proposal has been approved by the coordinator!';
-      case 'Rejected': 
-        return '❌ Your proposal has been rejected. Please check feedback and resubmit.';
-      case 'Changes Required': 
-        return '📝 Changes are required. Please review feedback and resubmit.';
-      case 'Pending Supervisor Consent': 
-        return '👨‍🏫 Waiting for supervisor to sign consent form...';
-      case 'Supervisor Approved': 
-        return '🎉 Phase 1 Completed! Your supervisor has signed the consent form. You can now proceed to Phase 2.';
-      case 'Supervisor Rejected': 
-        return '❌ Supervisor declined supervision. Please consult with coordinator.';
-      default: 
-        return 'ℹ️ Status unknown';
-    }
-  };
-
-  if (!student) {
-    return <div className="text-white p-10">Loading...</div>;
-  }
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 to-black flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
+  if (!student) return <div className="text-white p-10">Loading...</div>;
+  if (loading) return <div className="min-h-screen bg-black flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div></div>;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 to-black text-white">
-      {/* Header */}
-      <header className="bg-gray-800 shadow-lg">
+      <header className="bg-gray-800 shadow-lg border-b border-gray-700">
         <div className="container mx-auto px-6 py-4 flex justify-between items-center">
           <div>
-            <h1 className="text-2xl font-bold">Student Dashboard</h1>
-            <p className="text-gray-400">Welcome, {student.name}</p>
+            <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-500">Student Dashboard</h1>
+            <p className="text-gray-400 text-sm">Enrollment: {student.enrollment}</p>
           </div>
-          <button
-            onClick={handleLogout}
-            className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded transition-colors"
-          >
-            Logout
-          </button>
+          <button onClick={handleLogout} className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded text-sm font-bold transition-colors">Logout</button>
         </div>
       </header>
 
-      {/* Main Content */}
-      <div className="container mx-auto px-6 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Left: Upload Section */}
-          <div className="bg-gray-800 rounded-lg shadow-lg p-6 border border-gray-700">
-            <h2 className="text-2xl font-bold mb-6 flex items-center">
-              <span className="mr-3">📄</span>
-              Submit Proposal
-            </h2>
+      <div className="container mx-auto px-6 py-8 grid grid-cols-1 lg:grid-cols-2 gap-8">
+        
+        {/* === LEFT COLUMN: WORKFLOW === */}
+        <div className="space-y-8">
             
-            <form onSubmit={handleFileUpload} className="space-y-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Proposed Supervisor (Optional)
-                </label>
-                <input
-                  type="text"
-                  value={proposedSupervisor}
-                  onChange={(e) => setProposedSupervisor(e.target.value)}
-                  className="w-full p-3 bg-gray-900 border border-gray-700 text-white rounded-lg focus:ring-2 focus:ring-blue-500"
-                  placeholder="e.g., Dr. Ahmed Khan"
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  Mention your preferred supervisor's name
-                </p>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Upload Proposal Document <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="file"
-                  accept=".pdf,.doc,.docx"
-                  onChange={(e) => setFile(e.target.files[0])}
-                  className="w-full p-3 bg-gray-900 border border-gray-700 text-white rounded-lg file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-blue-600 file:text-white hover:file:bg-blue-700"
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  Accepted formats: PDF, DOC, DOCX (Max 10MB)
-                </p>
-              </div>
-
-              <button
-                type="submit"
-                disabled={uploading || !file}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
-              >
-                {uploading ? (
-                  <>
-                    <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-white mr-3"></div>
-                    Uploading...
-                  </>
-                ) : (
-                  <>
-                    <span className="mr-2">⬆️</span>
-                    {project ? 'Resubmit Proposal' : 'Submit Proposal'}
-                  </>
-                )}
-              </button>
-            </form>
-
-            {project && (
-              <div className="mt-6 p-4 bg-blue-900 bg-opacity-30 rounded-lg border border-blue-700">
-                <p className="text-sm text-blue-300">
-                  💡 <strong>Note:</strong> Resubmitting will replace your previous proposal and reset the review status.
-                </p>
-              </div>
-            )}
-          </div>
-
-          {/* Right: Status Section */}
-          <div className="bg-gray-800 rounded-lg shadow-lg p-6 border border-gray-700">
-            <h2 className="text-2xl font-bold mb-6 flex items-center">
-              <span className="mr-3">📊</span>
-              Proposal Status
-            </h2>
-
-            {!project ? (
-              <div className="text-center py-12">
-                <div className="text-6xl mb-4">📝</div>
-                <h3 className="text-xl font-semibold mb-2">No Proposal Submitted</h3>
-                <p className="text-gray-400">
-                  Submit your FYP proposal using the form on the left to get started.
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-6">
-                {/* Current Status */}
-                <div className="bg-gray-900 p-4 rounded-lg border border-gray-700">
-                  <h3 className="text-sm font-semibold text-gray-400 mb-2">Current Status</h3>
-                  <span className={`inline-block px-4 py-2 rounded-full text-sm font-semibold border ${getStatusColor(project.status)}`}>
-                    {project.status}
-                  </span>
-                  <p className="mt-3 text-gray-300">{getStatusMessage(project.status)}</p>
-                </div>
-
-                {/* Submission Details */}
-                <div className="bg-gray-900 p-4 rounded-lg border border-gray-700">
-                  <h3 className="text-sm font-semibold text-gray-400 mb-3">Submission Details</h3>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-gray-400">Submitted On:</span>
-                      <span className="text-white font-medium">
-                        {new Date(project.createdAt).toLocaleDateString()}
-                      </span>
-                    </div>
-                    {project.proposedSupervisorName && (
-                      <div className="flex justify-between">
-                        <span className="text-gray-400">Proposed Supervisor:</span>
-                        <span className="text-white font-medium">{project.proposedSupervisorName}</span>
-                      </div>
-                    )}
-                    <div className="flex justify-between">
-                      <span className="text-gray-400">Document:</span>
-                      <a
-                        href={`http://localhost:5000/${project.documentUrl}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-blue-400 hover:text-blue-300"
-                      >
-                        View/Download
-                      </a>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Assigned Supervisor */}
-                {project.supervisorId && (
-                  <div className="bg-purple-900 bg-opacity-30 p-4 rounded-lg border border-purple-700">
-                    <h3 className="text-sm font-semibold text-purple-300 mb-3">👨‍🏫 Assigned Supervisor</h3>
-                    <div className="space-y-2 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-gray-400">Name:</span>
-                        <span className="text-white font-medium">{project.supervisorId.name}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-400">Email:</span>
-                        <span className="text-white font-medium">{project.supervisorId.email}</span>
-                      </div>
-                      {project.supervisorSignature && (
-                        <>
-                          <div className="mt-4 pt-3 border-t border-purple-600">
-                            <p className="text-xs text-purple-300 mb-2">✍️ Digital Signature:</p>
-                            <p className="text-xl text-white font-signature" style={{ fontFamily: 'Brush Script MT, cursive' }}>
-                              {project.supervisorSignature}
-                            </p>
-                            <p className="text-xs text-gray-400 mt-1">
-                              Signed on: {new Date(project.supervisorSignedAt).toLocaleString()}
-                            </p>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* Coordinator Feedback */}
-                {project.coordinatorFeedback && (
-                  <div className="bg-blue-900 bg-opacity-30 p-4 rounded-lg border border-blue-700">
-                    <h3 className="text-sm font-semibold text-blue-300 mb-2">💬 Coordinator Feedback</h3>
-                    <p className="text-gray-300 text-sm">{project.coordinatorFeedback}</p>
-                  </div>
-                )}
-
-                {/* Supervisor Feedback */}
-                {project.supervisorFeedback && (
-                  <div className="bg-green-900 bg-opacity-30 p-4 rounded-lg border border-green-700">
-                    <h3 className="text-sm font-semibold text-green-300 mb-2">💬 Supervisor Feedback</h3>
-                    <p className="text-gray-300 text-sm">{project.supervisorFeedback}</p>
-                  </div>
-                )}
-
-                {/* Timeline */}
-                <div className="bg-gray-900 p-4 rounded-lg border border-gray-700">
-                  <h3 className="text-sm font-semibold text-gray-400 mb-3">📅 Project Timeline</h3>
-                  <div className="space-y-3">
-                    {/* Step 1: Submission */}
-                    <div className="flex items-start">
-                      <div className="w-2 h-2 bg-green-500 rounded-full mt-2 mr-3"></div>
-                      <div>
-                        <p className="text-white font-medium">✅ Proposal Submitted</p>
-                        <p className="text-xs text-gray-500">
-                          {new Date(project.createdAt).toLocaleString()}
-                        </p>
-                      </div>
-                    </div>
+            {/* PHASE 1: PROPOSAL */}
+            {!project || !isPhase1Complete(project.status) ? (
+                <div className="bg-gray-800 rounded-lg shadow-lg p-6 border border-gray-700">
+                    <h2 className="text-xl font-bold mb-4 flex items-center text-purple-400"><span className="mr-3">📄</span> Phase 1: Submit Proposal</h2>
                     
-                    {/* Step 2: Coordinator Review */}
-                    {project.status !== 'Pending Coordinator Review' && (
-                      <div className="flex items-start">
-                        <div className={`w-2 h-2 rounded-full mt-2 mr-3 ${
-                          project.status === 'Approved' || project.status === 'Pending Supervisor Consent' || project.status === 'Supervisor Approved'
-                            ? 'bg-green-500'
-                            : 'bg-red-500'
-                        }`}></div>
-                        <div>
-                          <p className="text-white font-medium">
-                            {project.status === 'Rejected' ? '❌' : '✅'} Coordinator Review
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            {project.status === 'Approved' || project.status === 'Pending Supervisor Consent' || project.status === 'Supervisor Approved' 
-                              ? 'Approved & Supervisor Assigned' 
-                              : project.status === 'Rejected' 
-                              ? 'Rejected' 
-                              : 'Changes Required'}
-                          </p>
+                    {project?.status === 'Approved - Waiting for Supervisor Consent' && (
+                        <div className="mb-4 p-3 bg-purple-900/30 border border-purple-500/50 rounded text-purple-200 text-sm">
+                            ℹ️ Coordinator accepted. Waiting for Supervisor to sign.
                         </div>
-                      </div>
                     )}
 
-                    {/* Step 3: Supervisor Consent */}
-                    {(project.status === 'Supervisor Approved' || project.status === 'Supervisor Rejected') && (
-                      <div className="flex items-start">
-                        <div className={`w-2 h-2 rounded-full mt-2 mr-3 ${
-                          project.status === 'Supervisor Approved' ? 'bg-green-500' : 'bg-red-500'
-                        }`}></div>
-                        <div>
-                          <p className="text-white font-medium">
-                            {project.status === 'Supervisor Approved' ? '✅' : '❌'} Supervisor Consent
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            {project.status === 'Supervisor Approved' 
-                              ? `Signed on ${new Date(project.supervisorSignedAt).toLocaleString()}` 
-                              : 'Declined'}
-                          </p>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Pending Step */}
-                    {project.status === 'Pending Supervisor Consent' && (
-                      <div className="flex items-start">
-                        <div className="w-2 h-2 bg-yellow-500 rounded-full mt-2 mr-3 animate-pulse"></div>
-                        <div>
-                          <p className="text-white font-medium">⏳ Awaiting Supervisor Consent</p>
-                          <p className="text-xs text-gray-500">In progress...</p>
-                        </div>
-                      </div>
-                    )}
-                  </div>
+                    <form onSubmit={(e) => handleUpload(e, 'proposal')} className="space-y-5">
+                        <input type="text" value={proposedSupervisor} onChange={(e) => setProposedSupervisor(e.target.value)} className="w-full p-3 bg-gray-900 border border-gray-700 text-white rounded-lg" placeholder="Proposed Supervisor (Optional)" />
+                        <input type="file" accept=".pdf,.doc,.docx" onChange={(e) => setFile(e.target.files[0])} className="w-full p-2 bg-gray-900 border border-gray-700 rounded-lg text-sm" />
+                        <button type="submit" disabled={uploading} className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-lg transition-colors">
+                            {uploading ? 'Uploading...' : 'Submit Proposal'}
+                        </button>
+                    </form>
                 </div>
-
-                {/* Phase 1 Completion Badge */}
-                {project.status === 'Supervisor Approved' && (
-                  <div className="bg-gradient-to-r from-green-900 to-emerald-900 p-6 rounded-lg border-2 border-green-500">
-                    <div className="flex items-center justify-center mb-3">
-                      <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center">
-                        <span className="text-3xl">🎉</span>
-                      </div>
-                    </div>
-                    <h3 className="text-2xl font-bold text-center text-white mb-2">
-                      Phase 1 Completed!
-                    </h3>
-                    <p className="text-center text-green-200 text-sm mb-4">
-                      Your proposal has been approved by both the coordinator and supervisor.
-                    </p>
-                    <div className="bg-green-800 bg-opacity-50 p-3 rounded-lg">
-                      <p className="text-xs text-green-100 text-center">
-                        ✅ Coordinator Approved<br/>
-                        ✅ Supervisor Consent Signed<br/>
-                        📋 Ready for Phase 2 Activities
-                      </p>
-                    </div>
-                  </div>
-                )}
-              </div>
+            ) : (
+                <div className="bg-gradient-to-r from-green-900/50 to-emerald-900/50 p-4 rounded-lg border border-green-500/50 flex justify-between items-center">
+                    <div><h3 className="font-bold text-green-400">Phase 1 Completed</h3><p className="text-xs text-green-200">Ready for Phase 2</p></div>
+                    <span className="text-2xl">✅</span>
+                </div>
             )}
-          </div>
+
+            {/* PHASE 2: DEFENSE */}
+            {project && isPhase2Active(project.status) && (
+                <div className={`bg-gray-800 rounded-lg shadow-lg p-6 border ${project.defenseDate ? 'border-blue-500 shadow-blue-900/20' : 'border-gray-700 opacity-75'}`}>
+                    <h2 className="text-xl font-bold mb-4 flex items-center text-blue-400"><span className="mr-3">🎤</span> Phase 2: Defense</h2>
+
+                    {project.defenseDate ? (
+                        <>
+                            <div className="mb-4 p-3 bg-blue-900/20 rounded border border-blue-500/30">
+                                <p className="text-sm text-blue-200">Scheduled For:</p>
+                                <p className="text-lg font-bold text-white">{new Date(project.defenseDate).toDateString()}</p>
+                                {project.defenseRoom && <p className="text-sm text-gray-300">Room: {project.defenseRoom}</p>}
+                            </div>
+                            <form onSubmit={(e) => handleUpload(e, 'ppt')}>
+                                <label className="text-sm mb-1 block">Upload Presentation (PPT)</label>
+                                <input type="file" accept=".ppt,.pptx,.pdf" onChange={(e) => setPptFile(e.target.files[0])} className="w-full p-2 bg-gray-900 border border-gray-700 rounded-lg text-sm mb-2" />
+                                <button type="submit" disabled={uploading} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded-lg">Submit PPT</button>
+                            </form>
+                        </>
+                    ) : (
+                        <div className="text-center py-4"><div className="animate-pulse text-yellow-500 text-xl mb-2">⏳</div><p className="text-sm text-gray-400">Waiting for Coordinator to assign defense date.</p></div>
+                    )}
+                </div>
+            )}
+
+            {/* PHASE 3: DEVELOPMENT */}
+            {project && isPhase3Active(project.status) && (
+                <div className="bg-gray-800 p-6 rounded-xl border border-orange-500 shadow-orange-900/20">
+                    <h2 className="text-xl font-bold mb-4 flex items-center text-orange-400"><span className="mr-3">🛠️</span> Phase 3: Development</h2>
+                    <div className="grid grid-cols-2 gap-4 mb-6">
+                        <form onSubmit={(e) => handleUpload(e, 'srs')}>
+                            <button className="text-xs bg-gray-700 px-3 py-2 rounded w-full hover:bg-orange-600 border border-gray-600">📄 Upload SRS</button>
+                            <input type="file" onChange={e=>setSrsFile(e.target.files[0])} className="text-xs w-full mt-1"/>
+                        </form>
+                        <form onSubmit={(e) => handleUpload(e, 'sds')}>
+                            <button className="text-xs bg-gray-700 px-3 py-2 rounded w-full hover:bg-orange-600 border border-gray-600">📄 Upload SDS</button>
+                            <input type="file" onChange={e=>setSdsFile(e.target.files[0])} className="text-xs w-full mt-1"/>
+                        </form>
+                    </div>
+                    <div className="bg-gray-900 p-4 rounded border border-gray-600">
+                        <h3 className="text-sm font-bold mb-2">Weekly Logs</h3>
+                        <div className="flex gap-2 mb-2">
+                            <input type="number" value={weekNo} onChange={e=>setWeekNo(e.target.value)} className="w-16 bg-gray-800 border border-gray-600 rounded p-1" placeholder="Wk"/>
+                            <input type="text" value={logContent} onChange={e=>setLogContent(e.target.value)} className="flex-1 bg-gray-800 border border-gray-600 rounded p-1" placeholder="Task done..."/>
+                        </div>
+                        <button onClick={submitLog} className="w-full bg-orange-600 py-1 rounded text-sm">Submit Log</button>
+                    </div>
+                </div>
+            )}
+
+            {/* PHASE 4: FINALIZATION */}
+            {project && isPhase4Active(project.status) && (
+                <div className="bg-gray-800 p-6 rounded-xl border border-red-500/50">
+                    <h2 className="text-xl font-bold mb-4 text-red-400">Phase 4: Semester 8</h2>
+                    <form onSubmit={(e) => handleUpload(e, 'final')}>
+                        <label className="block text-sm mb-1">Final Project Report</label>
+                        <input type="file" onChange={e=>setFinalFile(e.target.files[0])} className="w-full text-sm mb-2"/>
+                        <button className="w-full bg-red-600 py-2 rounded font-bold">Submit Final Report</button>
+                    </form>
+                </div>
+            )}
         </div>
+
+        {/* === RIGHT COL: STATUS & TIMELINE === */}
+        <div className="h-fit space-y-6">
+            <div className="bg-gray-800 rounded-lg shadow-lg p-6 border border-gray-700">
+                <h2 className="text-xl font-bold mb-6 flex items-center"><span className="mr-3">📊</span> Project Status</h2>
+                
+                {!project ? (
+                    <p className="text-gray-400 text-center py-4">No data available.</p>
+                ) : (
+                    <div className="space-y-6">
+                        {/* Current Stage Badge */}
+                        <div className="bg-gray-900 p-4 rounded-lg border border-gray-700">
+                            <h3 className="text-xs uppercase tracking-wider font-semibold text-gray-500 mb-2">Current Stage</h3>
+                            <span className={`inline-block px-3 py-1 rounded-full text-sm font-bold border ${getStatusColor(project.status)}`}>
+                                {project.status}
+                            </span>
+                        </div>
+
+                        {/* Defense Feedback */}
+                        {project.defenseFeedback && (
+                            <div className="bg-red-900/20 p-4 rounded-lg border border-red-500/50">
+                                 <h3 className="text-sm font-bold text-red-400 mb-1">⚠️ Panel Feedback</h3>
+                                 <p className="text-gray-300 text-sm italic">"{project.defenseFeedback}"</p>
+                            </div>
+                        )}
+
+                        {/* Timeline - FIXED */}
+                        <div className="border-t border-gray-700 pt-4">
+                             <h3 className="text-xs uppercase tracking-wider font-semibold text-gray-500 mb-3">Timeline</h3>
+                             <div className="space-y-3">
+                                <TimelineItem done={true} label="Submitted" />
+                                
+                                <TimelineItem done={
+                                    // Green if NOT pending, rejected, or changes required
+                                    !['Pending Coordinator Review', 'Rejected', 'Changes Required'].includes(project.status)
+                                } label="Coordinator Review" />
+                                
+                                <TimelineItem done={
+                                    // Green if NOT waiting for supervisor (i.e., Ready for defense or further)
+                                    !['Pending Coordinator Review', 'Rejected', 'Changes Required', 'Approved - Waiting for Supervisor Consent', 'Supervisor Rejected'].includes(project.status)
+                                } label="Supervisor Consent" />
+                                
+                                <TimelineItem done={
+                                    // Green if Date Exists
+                                    !!project.defenseDate
+                                } label="Defense Scheduled" />
+                                
+                                <TimelineItem done={
+                                    // Green if Cleared or Proposal Approved
+                                    ['Defense Cleared', 'Proposal Approved', 'Interim Scheduled', 'Final Scheduled', 'Completed'].includes(project.status)
+                                } label="Defense Cleared" />
+                             </div>
+                        </div>
+                    </div>
+                )}
+            </div>
+        </div>
+
       </div>
     </div>
   );
 };
+
+const TimelineItem = ({ done, label }) => (
+    <div className="flex items-center">
+        <div className={`w-3 h-3 rounded-full mr-3 ${done ? 'bg-green-500' : 'bg-gray-600'}`}></div>
+        <span className={`text-sm ${done ? 'text-white' : 'text-gray-500'}`}>{label}</span>
+    </div>
+);
 
 export default StudentDashboard;
