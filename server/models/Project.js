@@ -16,6 +16,21 @@ initialDefenseCompleted: { type: Boolean, default: false },
     ref: 'User',
     required: true
   },
+   srsUrl: { type: String, default: null },
+  sdsUrl: { type: String, default: null },
+  srsSdsStatus: {
+    type: String,
+    enum: ['Pending Review', 'Under Review', 'Approved', 'Rejected', 'Changes Required'],
+    default: null
+  },
+  srsSdsFeedback: { type: String, default: null },
+
+  srsSdsReviewMarks: {
+    coordinator: { type: Number, default: null, min: 0, max: 5 },
+    supervisor: { type: Number, default: null, min: 0, max: 5 },
+    panel: { type: Number, default: null, min: 0, max: 5 },
+    feedback: { type: String, default: null }
+  },
   
   // Phase 1: Proposal
   documentUrl: {
@@ -60,10 +75,21 @@ initialDefenseCompleted: { type: Boolean, default: false },
       'Supervisor Rejected',
       'Scheduled for Defense',
       'Defense Cleared',
-      'Defense Changes Required'
+      'Defense Changes Required',
+      'Ready for SRS/SDS Review',  // NEW: After SRS/SDS upload
+      'SRS/SDS Under Review',      // NEW: Under evaluation
+      'SRS/SDS Approved',          // NEW: After all evaluations
+      'SRS/SDS Rejected',          // NEW: If rejected
+      'Development Phase',          // NEW: After approval - weekly logs start
+      'Ready for Midterm Defense'
     ],
     default: 'Pending Coordinator Review'
   },
+   weeklyLogs: [{
+    weekNo: Number,
+    content: String,
+    submittedAt: { type: Date, default: Date.now }
+  }],
   
   // Coordinator feedback when reviewing proposal
   coordinatorFeedback: {

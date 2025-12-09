@@ -13,7 +13,9 @@ import {
   FileCheck,
   Download,
   Search,
+  BookOpen // ← ADD THIS IMPORT
 } from "lucide-react";
+
 // ============================================
 // INITIAL DEFENSE EVALUATION COMPONENT
 // ============================================
@@ -24,10 +26,13 @@ export const InitialDefenseEvaluation = () => {
   const [marks, setMarks] = useState('');
   const [feedback, setFeedback] = useState('');
   const [processing, setProcessing] = useState(false);
+  
 
   useEffect(() => {
     fetchInitialDefenseProjects();
   }, []);
+
+  
 
   const fetchInitialDefenseProjects = async () => {
     try {
@@ -42,6 +47,8 @@ export const InitialDefenseEvaluation = () => {
       setLoading(false);
     }
   };
+
+  
 
   const handleSubmitMarks = async () => {
     if (!marks || marks < 0 || marks > 5) {
@@ -97,6 +104,9 @@ export const InitialDefenseEvaluation = () => {
     );
   }
 
+
+
+
   return (
     <div className="space-y-8">
       <div>
@@ -137,8 +147,8 @@ export const InitialDefenseEvaluation = () => {
                   <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase">Coordinator (5%)</th>
                   <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase">Supervisor (5%)</th>
                   <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase">Panel (5%)</th>
-                  <th className="px6 py-4 text-left text-xs font-medium text-gray-400 uppercase">Total (15%)</th>
-                  <th className="px6 py-4 text-left text-xs font-medium text-gray-400 uppercase">Action</th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase">Total (15%)</th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-700/50">
@@ -301,6 +311,317 @@ export const InitialDefenseEvaluation = () => {
     </div>
   );
 };
+
+// ============================================
+// SRS/SDS COORDINATOR EVALUATION COMPONENT
+// ============================================
+export const SrsSdsCoordinator = () => { // ← ADD 'export' HERE
+  const [projects, setProjects] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedProject, setSelectedProject] = useState(null);
+  const [marks, setMarks] = useState('');
+  const [feedback, setFeedback] = useState('');
+  const [processing, setProcessing] = useState(false);
+
+  useEffect(() => {
+    fetchSrsSdsProjects();
+  }, []);
+
+  const fetchSrsSdsProjects = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('http://localhost:5000/api/projects/srs-sds-evaluation-projects');
+      const data = await response.json();
+      console.log('SRS/SDS projects for coordinator:', data);
+      setProjects(data);
+    } catch (error) {
+      console.error('Error fetching SRS/SDS projects:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSubmitMarks = async () => {
+    if (!marks || marks < 0 || marks > 5) {
+      alert('Please enter valid marks between 0 and 5');
+      return;
+    }
+
+    try {
+      setProcessing(true);
+      const response = await fetch(`http://localhost:5000/api/projects/submit-srs-sds-marks/${selectedProject._id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          role: 'coordinator', 
+          marks: parseFloat(marks),
+          feedback: feedback || undefined
+        }),
+      });
+
+      const data = await response.json();
+      if (response.ok) {
+        alert('✅ SRS/SDS evaluation submitted successfully!');
+        if (data.allMarksGiven) {
+          alert('🎉 All evaluations received! Project moved to Development Phase.');
+        }
+        setSelectedProject(null);
+        setMarks('');
+        setFeedback('');
+        fetchSrsSdsProjects();
+      } else {
+        alert(data.message || 'Failed to submit evaluation');
+      }
+    } catch (error) {
+      console.error('Error submitting evaluation:', error);
+      alert('Server error');
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const calculateTotalMarks = (project) => {
+    const m = project.srsSdsReviewMarks || {};
+    const total = (m.coordinator || 0) + (m.supervisor || 0) + (m.panel || 0);
+    const percentage = (total / 15 * 100).toFixed(1);
+    return { total, percentage };
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mx-auto"></div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-8">
+      <div>
+        <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+          SRS/SDS Document Evaluation
+        </h1>
+        <p className="text-gray-400 mt-2">Evaluate SRS and SDS documents (5% weightage each for Coordinator, Supervisor, Panel)</p>
+      </div>
+
+      <button
+        onClick={fetchSrsSdsProjects}
+        className="px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl hover:from-blue-600 hover:to-blue-700 transition-all shadow-lg"
+      >
+        🔄 Refresh List
+      </button>
+
+      <div className="bg-gray-800/50 backdrop-blur-lg rounded-2xl border border-gray-700 shadow-xl overflow-hidden">
+        <div className="p-6 border-b border-gray-700">
+          <h2 className="text-xl font-semibold text-white flex items-center">
+            <span className="mr-3">📋</span>
+            SRS/SDS Documents Ready for Evaluation ({projects.length})
+          </h2>
+        </div>
+
+        {projects.length === 0 ? (
+          <div className="p-12 text-center">
+            <div className="text-6xl mb-4">📄</div>
+            <h3 className="text-xl font-semibold text-white mb-2">No Documents Found</h3>
+            <p className="text-gray-400">Documents will appear here after supervisor approval.</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-900/50">
+                <tr>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase">Student</th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase">SRS</th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase">SDS</th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase">Coordinator (5%)</th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase">Supervisor (5%)</th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase">Panel (5%)</th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase">Total (15%)</th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-700/50">
+                {projects.map((project) => {
+                  const marks = project.srsSdsReviewMarks || {};
+                  const total = calculateTotalMarks(project);
+                  return (
+                    <tr key={project._id} className="hover:bg-gray-700/30 transition-colors">
+                      <td className="px-6 py-4">
+                        <div className="font-semibold text-white">{project.leaderId?.name}</div>
+                        <div className="text-sm text-gray-400">{project.leaderId?.enrollment}</div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <a
+                          href={`http://localhost:5000/${project.srsUrl}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg transition-colors inline-flex items-center"
+                        >
+                          📄 View SRS
+                        </a>
+                      </td>
+                      <td className="px-6 py-4">
+                        <a
+                          href={`http://localhost:5000/${project.sdsUrl}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg transition-colors inline-flex items-center"
+                        >
+                          📄 View SDS
+                        </a>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className={`px-3 py-1 rounded-full text-sm font-bold ${marks.coordinator !== null ? 'bg-green-500/20 text-green-300' : 'bg-yellow-500/20 text-yellow-300'}`}>
+                          {marks.coordinator !== null ? `${marks.coordinator}/5` : 'Pending'}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className={`px-3 py-1 rounded-full text-sm font-bold ${marks.supervisor !== null ? 'bg-green-500/20 text-green-300' : 'bg-yellow-500/20 text-yellow-300'}`}>
+                          {marks.supervisor !== null ? `${marks.supervisor}/5` : 'Pending'}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className={`px-3 py-1 rounded-full text-sm font-bold ${marks.panel !== null ? 'bg-green-500/20 text-green-300' : 'bg-yellow-500/20 text-yellow-300'}`}>
+                          {marks.panel !== null ? `${marks.panel}/5` : 'Pending'}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="font-bold text-white">{total.total}/15</div>
+                        <div className="text-sm text-gray-400">{total.percentage}%</div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <button
+                          onClick={() => setSelectedProject(project)}
+                          disabled={marks.coordinator !== null}
+                          className={`px-4 py-2 rounded-lg transition-all ${marks.coordinator !== null ? 'bg-gray-700 text-gray-400 cursor-not-allowed' : 'bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white'}`}
+                        >
+                          {marks.coordinator !== null ? '✅ Evaluated' : '📝 Evaluate'}
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Evaluation Modal */}
+      {selectedProject && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl shadow-2xl max-w-2xl w-full border border-gray-700">
+            <div className="p-6 border-b border-gray-700">
+              <div className="flex justify-between items-start">
+                <div>
+                  <h2 className="text-2xl font-bold text-white">SRS/SDS Document Evaluation</h2>
+                  <p className="text-gray-400 mt-1">Student: {selectedProject.leaderId?.name}</p>
+                </div>
+                <button
+                  onClick={() => {
+                    setSelectedProject(null);
+                    setMarks('');
+                    setFeedback('');
+                  }}
+                  className="text-gray-400 hover:text-gray-200 text-2xl"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6 space-y-6">
+              <div className="bg-gray-900 p-4 rounded-lg">
+                <h3 className="font-semibold text-white mb-3">Evaluation Details</h3>
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <span className="text-gray-400">Student:</span>
+                    <div className="font-medium text-white">{selectedProject.leaderId?.name}</div>
+                  </div>
+                  <div>
+                    <span className="text-gray-400">Your Role:</span>
+                    <div className="font-medium text-blue-400">Coordinator (5% weight)</div>
+                  </div>
+                  <div>
+                    <span className="text-gray-400">Download SRS:</span>
+                    <a
+                      href={`http://localhost:5000/${selectedProject.srsUrl}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-400 hover:underline block"
+                    >
+                      📥 Click to download SRS
+                    </a>
+                  </div>
+                  <div>
+                    <span className="text-gray-400">Download SDS:</span>
+                    <a
+                      href={`http://localhost:5000/${selectedProject.sdsUrl}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-400 hover:underline block"
+                    >
+                      📥 Click to download SDS
+                    </a>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-semibold text-white mb-2">
+                  Enter Marks (0 to 5) <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="number"
+                  value={marks}
+                  onChange={(e) => setMarks(e.target.value)}
+                  min="0"
+                  max="5"
+                  step="0.5"
+                  className="w-full p-3 bg-gray-900 border border-gray-700 text-white rounded-lg focus:ring-2 focus:ring-blue-500"
+                  placeholder="Enter marks out of 5"
+                />
+                <p className="text-sm text-gray-400 mt-1">Note: This contributes 5% to the total grade (15% total for SRS/SDS review)</p>
+              </div>
+
+              <div>
+                <label className="block font-semibold text-white mb-2">Feedback (Optional)</label>
+                <textarea
+                  value={feedback}
+                  onChange={(e) => setFeedback(e.target.value)}
+                  className="w-full p-3 bg-gray-900 border border-gray-700 text-white rounded-lg focus:ring-2 focus:ring-blue-500"
+                  rows="3"
+                  placeholder="Provide feedback on document quality, completeness, technical accuracy..."
+                />
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <button
+                  onClick={handleSubmitMarks}
+                  disabled={processing}
+                  className="flex-1 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium disabled:opacity-50"
+                >
+                  {processing ? 'Submitting...' : '✅ Submit Evaluation'}
+                </button>
+                <button
+                  onClick={() => {
+                    setSelectedProject(null);
+                    setMarks('');
+                    setFeedback('');
+                  }}
+                  className="px-6 py-3 bg-gray-700 text-white rounded-lg hover:bg-gray-600 font-medium"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 const FypCoordinator = () => {
   const navigate = useNavigate();
   const [coordinator, setCoordinator] = useState(null);
@@ -409,13 +730,17 @@ const FypCoordinator = () => {
                 collapsed={!sidebarOpen}
               />
               <SidebarButton 
-  icon={<BarChart3 className="w-5 h-5" />} 
-  label="Initial Defense" 
-  onClick={() => navigate('/coordinator/initial-defense-evaluation')}
-  collapsed={!sidebarOpen}
-/>
-
-              
+                icon={<BarChart3 className="w-5 h-5" />} 
+                label="Initial Defense" 
+                onClick={() => navigate('/coordinator/initial-defense-evaluation')}
+                collapsed={!sidebarOpen}
+              />
+              <SidebarButton 
+                icon={<BookOpen className="w-5 h-5" />} 
+                label="SRS/SDS Evaluation" 
+                onClick={() => navigate('/coordinator/srs-sds-evaluation')}
+                collapsed={!sidebarOpen}
+              />
             </div>
           </nav>
         </div>

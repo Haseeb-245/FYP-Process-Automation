@@ -12,8 +12,11 @@ const SupervisorDashboard = () => {
   const [signatureName, setSignatureName] = useState('');
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   
-  // ADD THIS: State for initial defense projects
+  // State for initial defense projects
   const [initialDefenseProjects, setInitialDefenseProjects] = useState([]);
+  
+  // State for SRS/SDS review projects
+  const [srsSdsReviewProjects, setSrsSdsReviewProjects] = useState([]);
 
   useEffect(() => {
     const userInfo = JSON.parse(localStorage.getItem('userInfo'));
@@ -25,70 +28,283 @@ const SupervisorDashboard = () => {
     }
     
     setSupervisor(userInfo);
-    setSignatureName(userInfo.name); // Pre-fill signature with supervisor name
-    fetchPendingConsents(userInfo._id);
-    
-    // ADD THIS: Fetch initial defense projects
-    fetchInitialDefenseProjects(userInfo._id);
+    setSignatureName(userInfo.name);
+    fetchAllData(userInfo._id);
   }, [navigate]);
 
-  const fetchPendingConsents = async (supervisorId) => {
+  const fetchAllData = async (supervisorId) => {
     try {
       setLoading(true);
-      console.log('Fetching consents for supervisor ID:', supervisorId);
+      console.log('🔍 Fetching data for supervisor:', supervisorId);
       
-      const response = await fetch(`http://localhost:5000/api/projects/supervisor-pending/${supervisorId}`);
-      const data = await response.json();
-      
-      console.log('Received consents:', data);
-      setPendingConsents(data);
+      // Fetch all data in parallel
+      const [
+        consentsResponse,
+        initialDefenseResponse,
+        srsSdsReviewResponse
+      ] = await Promise.all([
+        fetch(`http://localhost:5000/api/projects/supervisor-pending/${supervisorId}`),
+        fetch(`http://localhost:5000/api/projects/supervisor-initial-defense/${supervisorId}`),
+        fetch(`http://localhost:5000/api/projects/supervisor-srs-sds-review/${supervisorId}`)
+      ]);
+
+      // Log responses
+      console.log('Consents response status:', consentsResponse.status);
+      console.log('Initial Defense response status:', initialDefenseResponse.status);
+      console.log('SRS/SDS Review response status:', srsSdsReviewResponse.status);
+
+      // Process consents
+      if (consentsResponse.ok) {
+        const consentsData = await consentsResponse.json();
+        console.log('Consents data:', consentsData);
+        setPendingConsents(consentsData);
+      } else {
+        console.error('Consents fetch failed:', await consentsResponse.text());
+      }
+
+      // Process initial defense
+      if (initialDefenseResponse.ok) {
+        const initialDefenseData = await initialDefenseResponse.json();
+        console.log('Initial defense data:', initialDefenseData);
+        setInitialDefenseProjects(initialDefenseData);
+      } else {
+        console.error('Initial defense fetch failed:', await initialDefenseResponse.text());
+      }
+
+      // Process SRS/SDS review
+      if (srsSdsReviewResponse.ok) {
+        const srsSdsData = await srsSdsReviewResponse.json();
+        console.log('SRS/SDS review data:', srsSdsData);
+        
+        // Filter for projects that need supervisor decision
+        const pendingReview = srsSdsData.filter(project => 
+          project.srsSdsStatus === 'Pending Review' || 
+          project.srsSdsStatus === null ||
+          !project.srsSdsStatus
+        );
+        console.log('Pending SRS/SDS review projects:', pendingReview);
+        setSrsSdsReviewProjects(pendingReview);
+      } else {
+        const errorText = await srsSdsReviewResponse.text();
+        console.error('SRS/SDS review fetch failed:', errorText);
+        if (srsSdsReviewResponse.status === 404) {
+          console.error('❌ Route not found! Check backend route definition.');
+        }
+      }
+
     } catch (error) {
-      console.error('Error fetching consents:', error);
-      alert('Failed to fetch pending consents');
+      console.error('Error fetching data:', error);
+      alert(`Failed to fetch data: ${error.message}`);
     } finally {
       setLoading(false);
     }
   };
 
-  // ADD THIS: Function to fetch initial defense projects
-  const fetchInitialDefenseProjects = async (supervisorId) => {
+  // Handler for SRS/SDS decision
+  const handleSrsSdsDecision = async (projectId, decision) => {
+    const feedbackInput = document.getElementById(`feedback-${projectId}`)?.value || '';
+    
+    console.log('📝 SRS/SDS Decision:', { projectId, decision, feedback: feedbackInput });
+    
+    if (decision !== 'Approved' && !feedbackInput.trim()) {
+      alert('Please provide feedback when rejecting or requesting changes');
+      return;
+    }
+
     try {
-      const response = await fetch(`http://localhost:5000/api/projects/supervisor-initial-defense/${supervisorId}`);
+      setProcessing(true);
+      
+      const requestBody = {
+        decision: decision,
+        feedback: feedbackInput || undefined
+      };
+      
+      console.log('Sending request body:', requestBody);
+      
+      const response = await fetch(`http://localhost:5000/api/projects/supervisor-srs-sds-decision/${projectId}`, {
+        method: 'PUT',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify(requestBody)
+      });
+
+      console.log('Response status:', response.status);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('API Error Response:', errorText);
+        
+        try {
+          const errorData = JSON.parse(errorText);
+          throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
+        } catch {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+      }
+
       const data = await response.json();
-      setInitialDefenseProjects(data);
+      console.log('Success response:', data);
+      
+      alert(`✅ SRS/SDS ${decision}`);
+      fetchAllData(supervisor._id);
+      
     } catch (error) {
-      console.error('Error fetching initial defense projects:', error);
+      console.error('Error processing SRS/SDS decision:', error);
+      alert(`Failed to process decision: ${error.message}`);
+    } finally {
+      setProcessing(false);
     }
   };
 
-  // ADD THIS: Handler for initial defense evaluation
-  const handleInitialDefenseEvaluation = async (projectId, marks, feedback) => {
-    if (!marks || marks < 0 || marks > 5) {
+  // Handler for initial defense evaluation
+  const handleInitialDefenseEvaluation = async (projectId) => {
+    const marksInput = document.getElementById(`marks-${projectId}`)?.value;
+    const feedbackInput = document.getElementById(`feedback-${projectId}`)?.value || '';
+    
+    console.log('🎯 Initial Defense Evaluation:', { projectId, marks: marksInput, feedback: feedbackInput });
+    
+    if (!marksInput || marksInput < 0 || marksInput > 5) {
       alert('Please enter valid marks between 0 and 5');
       return;
     }
 
     try {
+      setProcessing(true);
+      
+      const requestBody = {
+        role: 'supervisor',
+        marks: parseFloat(marksInput),
+        feedback: feedbackInput || undefined
+      };
+      
+      console.log('Sending request body:', requestBody);
+      
       const response = await fetch(`http://localhost:5000/api/projects/submit-initial-defense-marks/${projectId}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          role: 'supervisor', 
-          marks: parseFloat(marks),
-          feedback: feedback || undefined
-        }),
+        headers: { 
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify(requestBody)
       });
 
-      const data = await response.json();
-      if (response.ok) {
-        alert('✅ Marks submitted successfully!');
-        fetchInitialDefenseProjects(supervisor._id);
-      } else {
-        alert(data.message || 'Failed to submit marks');
+      console.log('Response status:', response.status);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('API Error Response:', errorText);
+        
+        try {
+          const errorData = JSON.parse(errorText);
+          throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
+        } catch {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
       }
+
+      const data = await response.json();
+      console.log('Success response:', data);
+      
+      alert('✅ Marks submitted successfully!');
+      if (data.allMarksGiven) {
+        alert('🎉 All evaluations received! Project moved to next phase.');
+      }
+      fetchAllData(supervisor._id);
+      
     } catch (error) {
       console.error('Error submitting marks:', error);
-      alert('Server error');
+      alert(`Failed to submit marks: ${error.message}`);
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  // Handler for SRS/SDS evaluation marks
+  const handleSrsSdsEvaluation = async (projectId) => {
+    const marksInput = document.getElementById(`srs-sds-marks-${projectId}`)?.value;
+    const feedbackInput = document.getElementById(`srs-sds-feedback-${projectId}`)?.value || '';
+    
+    console.log('📋 SRS/SDS Evaluation:', { projectId, marks: marksInput, feedback: feedbackInput });
+    
+    if (!marksInput || marksInput < 0 || marksInput > 5) {
+      alert('Please enter valid marks between 0 and 5');
+      return;
+    }
+
+    try {
+      setProcessing(true);
+      
+      const requestBody = {
+        role: 'supervisor',
+        marks: parseFloat(marksInput),
+        feedback: feedbackInput || undefined
+      };
+      
+      console.log('Sending request body:', requestBody);
+      
+      const response = await fetch(`http://localhost:5000/api/projects/submit-srs-sds-marks/${projectId}`, {
+        method: 'PUT',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify(requestBody)
+      });
+
+      console.log('Response status:', response.status);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('API Error Response:', errorText);
+        
+        try {
+          const errorData = JSON.parse(errorText);
+          throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
+        } catch {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+      }
+
+      const data = await response.json();
+      console.log('Success response:', data);
+      
+      alert('✅ SRS/SDS Evaluation Submitted Successfully!');
+      if (data.allMarksGiven) {
+        alert('🎉 All SRS/SDS evaluations received! Project moved to Development Phase.');
+      }
+      fetchAllData(supervisor._id);
+      
+    } catch (error) {
+      console.error('Error submitting SRS/SDS marks:', error);
+      alert(`Failed to submit evaluation: ${error.message}`);
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  // Debug function to test backend routes
+  const testBackendRoutes = async () => {
+    if (!supervisor) return;
+    
+    console.log('🔧 Testing backend routes...');
+    
+    const testUrls = [
+      `http://localhost:5000/api/projects/supervisor-srs-sds-review/${supervisor._id}`,
+      'http://localhost:5000/api/projects/supervisor-srs-sds-decision/test-id',
+      'http://localhost:5000/api/projects/submit-srs-sds-marks/test-id',
+      'http://localhost:5000/api/projects/submit-initial-defense-marks/test-id'
+    ];
+    
+    for (const url of testUrls) {
+      try {
+        console.log(`Testing: ${url}`);
+        const response = await fetch(url, { method: 'GET' });
+        console.log(`${url} - Status: ${response.status}`);
+      } catch (error) {
+        console.error(`${url} - Error: ${error.message}`);
+      }
     }
   };
 
@@ -137,7 +353,7 @@ const SupervisorDashboard = () => {
         setFeedback('');
         setSignatureName(supervisor.name);
         setAgreedToTerms(false);
-        fetchPendingConsents(supervisor._id);
+        fetchAllData(supervisor._id);
       } else {
         alert(data.message || 'Failed to process decision');
       }
@@ -175,91 +391,214 @@ const SupervisorDashboard = () => {
             <h1 className="text-2xl font-bold">Supervisor Dashboard</h1>
             <p className="text-gray-400">Welcome, {supervisor.name}</p>
           </div>
-          <button
-            onClick={handleLogout}
-            className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded transition-colors"
-          >
-            Logout
-          </button>
+          <div className="flex space-x-2">
+            <button
+              onClick={testBackendRoutes}
+              className="bg-yellow-600 hover:bg-yellow-700 px-4 py-2 rounded transition-colors text-sm"
+            >
+              🔧 Test Routes
+            </button>
+            <button
+              onClick={() => fetchAllData(supervisor._id)}
+              className="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded transition-colors text-sm"
+            >
+              🔄 Refresh
+            </button>
+            <button
+              onClick={handleLogout}
+              className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded transition-colors"
+            >
+              Logout
+            </button>
+          </div>
         </div>
       </header>
 
       {/* Main Content */}
       <div className="container mx-auto px-6 py-8">
         <div className="mb-8">
-          <h2 className="text-3xl font-bold mb-2">Pending Consent Requests</h2>
-          <p className="text-gray-400">Review and sign consent forms for student project proposals</p>
+          <h2 className="text-3xl font-bold mb-2">Supervisor Dashboard</h2>
+          <p className="text-gray-400">Manage student projects, evaluations, and reviews</p>
         </div>
 
-        {/* Stats Card */}
-        <div className="bg-gray-800 p-6 rounded-lg shadow mb-8 border-l-4 border-yellow-500">
-          <div className="text-4xl font-bold">{pendingConsents.length}</div>
-          <div className="text-gray-400">Pending Consent Forms</div>
+        {/* Debug Info Panel */}
+        <div className="bg-gray-800 p-4 rounded-lg mb-6 border border-yellow-500">
+          <h3 className="text-yellow-400 font-bold mb-2">⚠️ Debug Information</h3>
+          <p className="text-sm text-gray-300">
+            Supervisor ID: <code className="bg-gray-900 px-2 py-1 rounded">{supervisor._id}</code>
+          </p>
+          <p className="text-sm text-gray-300 mt-1">
+            Pending Consents: {pendingConsents.length} | 
+            Initial Defense: {initialDefenseProjects.length} | 
+            SRS/SDS Review: {srsSdsReviewProjects.length}
+          </p>
         </div>
 
-        {/* Projects List */}
-        {pendingConsents.length === 0 ? (
-          <div className="bg-gray-800 rounded-lg shadow p-12 text-center">
-            <div className="text-6xl mb-4">✅</div>
-            <h3 className="text-xl font-semibold mb-2">No Pending Requests</h3>
-            <p className="text-gray-400">All consent requests have been processed!</p>
+        {/* Pending Consent Requests */}
+        <div className="mb-12">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h2 className="text-2xl font-bold mb-2">Pending Consent Requests</h2>
+              <p className="text-gray-400">Review and sign consent forms for student project proposals</p>
+            </div>
+            <div className="bg-gray-800 p-4 rounded-lg border-l-4 border-yellow-500">
+              <div className="text-3xl font-bold">{pendingConsents.length}</div>
+              <div className="text-gray-400">Pending</div>
+            </div>
           </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {pendingConsents.map((project) => (
-              <div key={project._id} className="bg-gray-800 rounded-lg shadow-lg overflow-hidden border border-gray-700 hover:border-blue-500 transition-all">
-                <div className="p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <span className="px-3 py-1 bg-yellow-500 text-black text-xs font-semibold rounded-full">
-                      ⏳ Awaiting Signature
-                    </span>
-                  </div>
-                  
-                  <h3 className="text-xl font-bold mb-3">{project.leaderId?.name}</h3>
-                  
-                  <div className="space-y-2 text-sm mb-4">
-                    <div className="flex items-center text-gray-400">
-                      <span className="font-semibold mr-2">Enrollment:</span>
-                      <span>{project.leaderId?.enrollment}</span>
+
+          {pendingConsents.length === 0 ? (
+            <div className="bg-gray-800 rounded-lg shadow p-12 text-center">
+              <div className="text-6xl mb-4">✅</div>
+              <h3 className="text-xl font-semibold mb-2">No Pending Requests</h3>
+              <p className="text-gray-400">All consent requests have been processed!</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {pendingConsents.map((project) => (
+                <div key={project._id} className="bg-gray-800 rounded-lg shadow-lg overflow-hidden border border-gray-700 hover:border-blue-500 transition-all">
+                  <div className="p-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <span className="px-3 py-1 bg-yellow-500 text-black text-xs font-semibold rounded-full">
+                        ⏳ Awaiting Signature
+                      </span>
                     </div>
-                    <div className="flex items-center text-gray-400">
-                      <span className="font-semibold mr-2">Email:</span>
-                      <span className="truncate">{project.leaderId?.email || 'N/A'}</span>
-                    </div>
-                    {project.proposedSupervisorName && (
+                    
+                    <h3 className="text-xl font-bold mb-3">{project.leaderId?.name}</h3>
+                    
+                    <div className="space-y-2 text-sm mb-4">
                       <div className="flex items-center text-gray-400">
-                        <span className="font-semibold mr-2">Proposed:</span>
-                        <span>{project.proposedSupervisorName}</span>
+                        <span className="font-semibold mr-2">Enrollment:</span>
+                        <span>{project.leaderId?.enrollment}</span>
+                      </div>
+                      <div className="flex items-center text-gray-400">
+                        <span className="font-semibold mr-2">Email:</span>
+                        <span className="truncate">{project.leaderId?.email || 'N/A'}</span>
+                      </div>
+                      {project.proposedSupervisorName && (
+                        <div className="flex items-center text-gray-400">
+                          <span className="font-semibold mr-2">Proposed:</span>
+                          <span>{project.proposedSupervisorName}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {project.coordinatorFeedback && (
+                      <div className="mb-4 p-3 bg-gray-900 rounded">
+                        <p className="text-xs font-semibold text-gray-400 mb-1">📝 Coordinator's Note:</p>
+                        <p className="text-sm text-gray-300">{project.coordinatorFeedback}</p>
                       </div>
                     )}
-                    <div className="flex items-center text-gray-400">
-                      <span className="font-semibold mr-2">Submitted:</span>
-                      <span>{new Date(project.createdAt).toLocaleDateString()}</span>
+                    
+                    <button
+                      onClick={() => setSelectedProject(project)}
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 rounded transition-colors"
+                    >
+                      📋 Review & Sign Consent
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* SRS/SDS Review Section */}
+        {srsSdsReviewProjects.length > 0 && (
+          <div className="mb-12">
+            <h2 className="text-2xl font-bold mb-6 text-purple-400">SRS/SDS Document Review</h2>
+            <p className="text-gray-400 mb-4">Review student's SRS and SDS documents before evaluation</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {srsSdsReviewProjects.map((project) => (
+                <div key={project._id} className="bg-gray-800 rounded-lg shadow-lg p-6 border border-purple-700">
+                  <h3 className="text-xl font-bold mb-3">{project.leaderId?.name}</h3>
+                  <p className="text-gray-400 mb-2">Enrollment: {project.leaderId?.enrollment}</p>
+                  
+                  <div className="space-y-3 mb-4">
+                    {project.srsUrl && (
+                      <a
+                        href={`http://localhost:5000/${project.srsUrl}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors text-sm text-center"
+                      >
+                        📥 Download SRS Document
+                      </a>
+                    )}
+                    {project.sdsUrl && (
+                      <a
+                        href={`http://localhost:5000/${project.sdsUrl}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors text-sm text-center"
+                      >
+                        📥 Download SDS Document
+                      </a>
+                    )}
+                  </div>
+                  
+                  <div className="space-y-3">
+                    <textarea
+                      id={`feedback-${project._id}`}
+                      placeholder="Your feedback (required for rejection/changes)"
+                      className="w-full p-3 bg-gray-900 border border-gray-700 text-white rounded text-sm"
+                      rows="3"
+                    />
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        onClick={() => handleSrsSdsDecision(project._id, 'Approved')}
+                        disabled={processing}
+                        className="bg-green-600 hover:bg-green-700 text-white font-medium py-2 rounded transition-colors disabled:opacity-50"
+                      >
+                        {processing ? 'Processing...' : '✅ Accept for Evaluation'}
+                      </button>
+                      <button
+                        onClick={() => handleSrsSdsDecision(project._id, 'Rejected')}
+                        disabled={processing}
+                        className="bg-red-600 hover:bg-red-700 text-white font-medium py-2 rounded transition-colors disabled:opacity-50"
+                      >
+                        {processing ? 'Processing...' : '❌ Reject'}
+                      </button>
                     </div>
                   </div>
-
-                  {project.coordinatorFeedback && (
-                    <div className="mb-4 p-3 bg-gray-900 rounded">
-                      <p className="text-xs font-semibold text-gray-400 mb-1">📝 Coordinator's Note:</p>
-                      <p className="text-sm text-gray-300">{project.coordinatorFeedback}</p>
+                  
+                  {/* SRS/SDS Evaluation Form (for after acceptance) */}
+                  {project.srsSdsStatus === 'Under Review' && (
+                    <div className="mt-6 pt-6 border-t border-gray-700">
+                      <h4 className="font-bold mb-3 text-green-400">Provide Evaluation Marks</h4>
+                      <input
+                        type="number"
+                        id={`srs-sds-marks-${project._id}`}
+                        min="0"
+                        max="5"
+                        step="0.5"
+                        placeholder="Enter marks (0-5)"
+                        className="w-full p-3 bg-gray-900 border border-gray-700 text-white rounded mb-2"
+                      />
+                      <textarea
+                        id={`srs-sds-feedback-${project._id}`}
+                        placeholder="Evaluation feedback (optional)"
+                        className="w-full p-3 bg-gray-900 border border-gray-700 text-white rounded text-sm mb-3"
+                        rows="2"
+                      />
+                      <button
+                        onClick={() => handleSrsSdsEvaluation(project._id)}
+                        disabled={processing}
+                        className="w-full bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-medium py-3 rounded transition-colors disabled:opacity-50"
+                      >
+                        {processing ? 'Submitting...' : '📝 Submit SRS/SDS Evaluation (5%)'}
+                      </button>
                     </div>
                   )}
-                  
-                  <button
-                    onClick={() => setSelectedProject(project)}
-                    className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 rounded transition-colors"
-                  >
-                    📋 Review & Sign Consent
-                  </button>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         )}
 
-        {/* ADD THIS: Initial Defense Evaluation Section */}
+        {/* Initial Defense Evaluation Section */}
         {initialDefenseProjects.length > 0 && (
-          <div className="mt-12">
+          <div className="mb-12">
             <h2 className="text-2xl font-bold mb-6 text-green-400">Initial Defense Evaluations</h2>
             <p className="text-gray-400 mb-4">Evaluate your assigned student's PPT presentation (5% weightage)</p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -271,14 +610,16 @@ const SupervisorDashboard = () => {
                     <p className="text-gray-400 mb-2">Enrollment: {project.leaderId?.enrollment}</p>
                     
                     <div className="mb-4">
-                      <a
-                        href={`http://localhost:5000/${project.presentationUrl}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-block px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors text-sm"
-                      >
-                        📥 Download Presentation
-                      </a>
+                      {project.presentationUrl && (
+                        <a
+                          href={`http://localhost:5000/${project.presentationUrl}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-block px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors text-sm"
+                        >
+                          📥 Download Presentation
+                        </a>
+                      )}
                     </div>
                     
                     {marks.supervisor !== null ? (
@@ -307,14 +648,11 @@ const SupervisorDashboard = () => {
                           rows="2"
                         />
                         <button
-                          onClick={() => {
-                            const marksInput = document.getElementById(`marks-${project._id}`).value;
-                            const feedbackInput = document.getElementById(`feedback-${project._id}`).value;
-                            handleInitialDefenseEvaluation(project._id, marksInput, feedbackInput);
-                          }}
-                          className="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-3 rounded transition-colors"
+                          onClick={() => handleInitialDefenseEvaluation(project._id)}
+                          disabled={processing}
+                          className="w-full bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-medium py-3 rounded transition-colors disabled:opacity-50"
                         >
-                          📝 Submit Evaluation (5%)
+                          {processing ? 'Submitting...' : '📝 Submit Evaluation (5%)'}
                         </button>
                       </div>
                     )}
@@ -325,7 +663,18 @@ const SupervisorDashboard = () => {
           </div>
         )}
 
-        {/* Enhanced Consent Form Modal */}
+        {/* Summary when all done */}
+        {pendingConsents.length === 0 && 
+         srsSdsReviewProjects.length === 0 && 
+         initialDefenseProjects.length === 0 && (
+          <div className="bg-gray-800 rounded-lg shadow p-12 text-center">
+            <div className="text-6xl mb-4">🎉</div>
+            <h3 className="text-xl font-semibold mb-2">All Tasks Completed!</h3>
+            <p className="text-gray-400">You have no pending evaluations or consent requests at this time.</p>
+          </div>
+        )}
+
+        {/* Consent Form Modal */}
         {selectedProject && (
           <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50 overflow-y-auto">
             <div className="bg-gray-800 rounded-lg shadow-2xl max-w-4xl w-full max-h-[95vh] overflow-y-auto border border-gray-700">

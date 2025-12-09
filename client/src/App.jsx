@@ -11,7 +11,8 @@ import FypCoordinator, {
   Dashboard, 
   AllProjects, 
   ScheduleDefense,
-   InitialDefenseEvaluation, 
+   InitialDefenseEvaluation,
+   SrsSdsCoordinator, 
 } from "./pages/coordinator/FypCoordinator";
 
 function App() {
@@ -36,8 +37,10 @@ function App() {
       
           <Route path="schedule-defense" element={<ScheduleDefense />} />
         <Route path="initial-defense-evaluation" element={<InitialDefenseEvaluation />} />
+         <Route path="srs-sds-evaluation" element={<SrsSdsCoordinator />} />
+</Route>
 
-        </Route>
+        
 
         {/* 5. Supervisor Dashboard */}
         <Route path="/supervisor/dashboard" element={<SupervisorDashboard />} />
