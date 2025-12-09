@@ -11,6 +11,9 @@ const SupervisorDashboard = () => {
   const [processing, setProcessing] = useState(false);
   const [signatureName, setSignatureName] = useState('');
   const [agreedToTerms, setAgreedToTerms] = useState(false);
+  
+  // ADD THIS: State for initial defense projects
+  const [initialDefenseProjects, setInitialDefenseProjects] = useState([]);
 
   useEffect(() => {
     const userInfo = JSON.parse(localStorage.getItem('userInfo'));
@@ -24,6 +27,9 @@ const SupervisorDashboard = () => {
     setSupervisor(userInfo);
     setSignatureName(userInfo.name); // Pre-fill signature with supervisor name
     fetchPendingConsents(userInfo._id);
+    
+    // ADD THIS: Fetch initial defense projects
+    fetchInitialDefenseProjects(userInfo._id);
   }, [navigate]);
 
   const fetchPendingConsents = async (supervisorId) => {
@@ -41,6 +47,48 @@ const SupervisorDashboard = () => {
       alert('Failed to fetch pending consents');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // ADD THIS: Function to fetch initial defense projects
+  const fetchInitialDefenseProjects = async (supervisorId) => {
+    try {
+      const response = await fetch(`http://localhost:5000/api/projects/supervisor-initial-defense/${supervisorId}`);
+      const data = await response.json();
+      setInitialDefenseProjects(data);
+    } catch (error) {
+      console.error('Error fetching initial defense projects:', error);
+    }
+  };
+
+  // ADD THIS: Handler for initial defense evaluation
+  const handleInitialDefenseEvaluation = async (projectId, marks, feedback) => {
+    if (!marks || marks < 0 || marks > 5) {
+      alert('Please enter valid marks between 0 and 5');
+      return;
+    }
+
+    try {
+      const response = await fetch(`http://localhost:5000/api/projects/submit-initial-defense-marks/${projectId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          role: 'supervisor', 
+          marks: parseFloat(marks),
+          feedback: feedback || undefined
+        }),
+      });
+
+      const data = await response.json();
+      if (response.ok) {
+        alert('✅ Marks submitted successfully!');
+        fetchInitialDefenseProjects(supervisor._id);
+      } else {
+        alert(data.message || 'Failed to submit marks');
+      }
+    } catch (error) {
+      console.error('Error submitting marks:', error);
+      alert('Server error');
     }
   };
 
@@ -206,6 +254,74 @@ const SupervisorDashboard = () => {
                 </div>
               </div>
             ))}
+          </div>
+        )}
+
+        {/* ADD THIS: Initial Defense Evaluation Section */}
+        {initialDefenseProjects.length > 0 && (
+          <div className="mt-12">
+            <h2 className="text-2xl font-bold mb-6 text-green-400">Initial Defense Evaluations</h2>
+            <p className="text-gray-400 mb-4">Evaluate your assigned student's PPT presentation (5% weightage)</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {initialDefenseProjects.map((project) => {
+                const marks = project.initialDefenseMarks || {};
+                return (
+                  <div key={project._id} className="bg-gray-800 rounded-lg shadow-lg p-6 border border-green-700">
+                    <h3 className="text-xl font-bold mb-3">{project.leaderId?.name}</h3>
+                    <p className="text-gray-400 mb-2">Enrollment: {project.leaderId?.enrollment}</p>
+                    
+                    <div className="mb-4">
+                      <a
+                        href={`http://localhost:5000/${project.presentationUrl}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-block px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors text-sm"
+                      >
+                        📥 Download Presentation
+                      </a>
+                    </div>
+                    
+                    {marks.supervisor !== null ? (
+                      <div className="p-3 bg-green-900/30 rounded border border-green-500">
+                        <p className="text-green-300 font-bold">✅ Already Evaluated</p>
+                        <p className="text-white font-bold">Marks: {marks.supervisor}/5</p>
+                        {project.initialDefenseMarks?.feedback && (
+                          <p className="text-gray-300 text-sm mt-2">Feedback: {project.initialDefenseMarks.feedback}</p>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        <input
+                          type="number"
+                          id={`marks-${project._id}`}
+                          min="0"
+                          max="5"
+                          step="0.5"
+                          placeholder="Enter marks (0-5)"
+                          className="w-full p-3 bg-gray-900 border border-gray-700 text-white rounded"
+                        />
+                        <textarea
+                          id={`feedback-${project._id}`}
+                          placeholder="Feedback (optional)"
+                          className="w-full p-3 bg-gray-900 border border-gray-700 text-white rounded text-sm"
+                          rows="2"
+                        />
+                        <button
+                          onClick={() => {
+                            const marksInput = document.getElementById(`marks-${project._id}`).value;
+                            const feedbackInput = document.getElementById(`feedback-${project._id}`).value;
+                            handleInitialDefenseEvaluation(project._id, marksInput, feedbackInput);
+                          }}
+                          className="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-3 rounded transition-colors"
+                        >
+                          📝 Submit Evaluation (5%)
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
 

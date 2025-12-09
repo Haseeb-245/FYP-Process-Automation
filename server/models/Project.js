@@ -1,6 +1,15 @@
 const mongoose = require('mongoose');
 
 const ProjectSchema = new mongoose.Schema({
+
+  initialDefenseMarks: {
+  coordinator: { type: Number, default: null, min: 0, max: 5 },
+  supervisor: { type: Number, default: null, min: 0, max: 5 },
+  panel: { type: Number, default: null, min: 0, max: 5 },
+  feedback: { type: String, default: null } // General feedback
+},
+
+initialDefenseCompleted: { type: Boolean, default: false },
   // Student who submitted
   leaderId: {
     type: mongoose.Schema.Types.ObjectId,
@@ -90,6 +99,8 @@ const ProjectSchema = new mongoose.Schema({
     default: null
   }
   
+  
 }, { timestamps: true });
+
 
 module.exports = mongoose.model('Project', ProjectSchema);

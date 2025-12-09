@@ -257,4 +257,101 @@ router.put('/defense-decision/:id', async (req, res) => {
     }
 });
 
+// ==========================================
+//     INITIAL DEFENSE EVALUATION ROUTES
+// ==========================================
+
+// 1. Get projects ready for initial defense evaluation (for Coordinator & Panel)
+router.get('/initial-defense-projects', async (req, res) => {
+  try {
+    const projects = await Project.find({
+      status: 'Scheduled for Defense',
+      presentationUrl: { $ne: null } // Has uploaded PPT
+    })
+    .populate('leaderId', 'name enrollment email')
+    .populate('supervisorId', 'name email');
+    res.json(projects);
+  } catch (error) {
+    res.status(500).json({ message: 'Server Error' });
+  }
+});
+
+// 2. Get supervisor's assigned project for initial defense
+router.get('/supervisor-initial-defense/:supervisorId', async (req, res) => {
+  try {
+    const projects = await Project.find({
+      supervisorId: req.params.supervisorId,
+      presentationUrl: { $ne: null },
+      status: 'Scheduled for Defense'
+    })
+    .populate('leaderId', 'name enrollment email');
+    res.json(projects);
+  } catch (error) {
+    res.status(500).json({ message: 'Server Error' });
+  }
+});
+
+// 3. Submit initial defense marks
+router.put('/submit-initial-defense-marks/:projectId', async (req, res) => {
+  try {
+    const { role, marks, feedback } = req.body;
+    const updateData = {};
+    
+    // Role-based mark assignment
+    if (role === 'coordinator') {
+      updateData['initialDefenseMarks.coordinator'] = marks;
+    } else if (role === 'supervisor') {
+      updateData['initialDefenseMarks.supervisor'] = marks;
+    } else if (role === 'panel') {
+      updateData['initialDefenseMarks.panel'] = marks;
+    }
+    
+    // Add feedback if provided
+    if (feedback) {
+      updateData['initialDefenseMarks.feedback'] = feedback;
+    }
+    
+    // Check if all marks are given (coordinator, supervisor, panel)
+    const project = await Project.findById(req.params.projectId);
+    const currentMarks = project.initialDefenseMarks || {};
+    
+    const newMarks = { ...currentMarks, ...updateData };
+    const allMarksGiven = newMarks.coordinator !== null && 
+                         newMarks.supervisor !== null && 
+                         newMarks.panel !== null;
+    
+    if (allMarksGiven) {
+      updateData.initialDefenseCompleted = true;
+      updateData.status = 'Defense Cleared'; // Move to next phase
+    }
+    
+    const updatedProject = await Project.findByIdAndUpdate(
+      req.params.projectId,
+      { $set: updateData },
+      { new: true }
+    );
+    
+    res.json({ 
+      message: 'Marks submitted successfully', 
+      project: updatedProject,
+      allMarksGiven 
+    });
+  } catch (error) {
+    console.error('Error submitting marks:', error);
+    res.status(500).json({ message: 'Server Error' });
+  }
+});
+
+// 4. Get student's initial defense marks
+router.get('/initial-defense-marks/:studentId', async (req, res) => {
+  try {
+    const project = await Project.findOne({ 
+      leaderId: req.params.studentId 
+    }).select('initialDefenseMarks initialDefenseCompleted');
+    res.json(project);
+  } catch (error) {
+    res.status(500).json({ message: 'Server Error' });
+  }
+});
+
 module.exports = router;

@@ -136,12 +136,28 @@ const StudentDashboard = () => {
       return phase2Statuses.includes(status);
   };
 
-  // 3. Is Phase 3 (Development) Active?
-  const isPhase3Active = (status) => {
-      const phase3Statuses = ['Defense Cleared', 'Proposal Approved', 'Interim Scheduled'];
-      return phase3Statuses.includes(status);
-  };
+ // Add this helper function
+const isInitialDefenseComplete = (project) => {
+  if (!project || !project.initialDefenseMarks) return false;
+  
+  const marks = project.initialDefenseMarks;
+  return marks.coordinator !== null && 
+         marks.supervisor !== null && 
+         marks.panel !== null &&
+         project.initialDefenseCompleted === true;
+};
 
+// Update the isPhase3Active function:
+const isPhase3Active = (status, project) => {
+  const phase3Statuses = ['Defense Cleared', 'Proposal Approved', 'Interim Scheduled'];
+  
+  // Check if initial defense is complete even if status hasn't updated yet
+  if (isInitialDefenseComplete(project)) {
+    return true;
+  }
+  
+  return phase3Statuses.includes(status);
+};
   // 4. Is Phase 4 (Final) Active?
   const isPhase4Active = (status) => {
       const phase4Statuses = ['Final Scheduled', 'Completed'];
@@ -225,30 +241,135 @@ const StudentDashboard = () => {
                 </div>
             )}
 
-            {/* PHASE 3: DEVELOPMENT */}
-            {project && isPhase3Active(project.status) && (
-                <div className="bg-gray-800 p-6 rounded-xl border border-orange-500 shadow-orange-900/20">
-                    <h2 className="text-xl font-bold mb-4 flex items-center text-orange-400"><span className="mr-3">🛠️</span> Phase 3: Development</h2>
-                    <div className="grid grid-cols-2 gap-4 mb-6">
-                        <form onSubmit={(e) => handleUpload(e, 'srs')}>
-                            <button className="text-xs bg-gray-700 px-3 py-2 rounded w-full hover:bg-orange-600 border border-gray-600">📄 Upload SRS</button>
-                            <input type="file" onChange={e=>setSrsFile(e.target.files[0])} className="text-xs w-full mt-1"/>
-                        </form>
-                        <form onSubmit={(e) => handleUpload(e, 'sds')}>
-                            <button className="text-xs bg-gray-700 px-3 py-2 rounded w-full hover:bg-orange-600 border border-gray-600">📄 Upload SDS</button>
-                            <input type="file" onChange={e=>setSdsFile(e.target.files[0])} className="text-xs w-full mt-1"/>
-                        </form>
-                    </div>
-                    <div className="bg-gray-900 p-4 rounded border border-gray-600">
-                        <h3 className="text-sm font-bold mb-2">Weekly Logs</h3>
-                        <div className="flex gap-2 mb-2">
-                            <input type="number" value={weekNo} onChange={e=>setWeekNo(e.target.value)} className="w-16 bg-gray-800 border border-gray-600 rounded p-1" placeholder="Wk"/>
-                            <input type="text" value={logContent} onChange={e=>setLogContent(e.target.value)} className="flex-1 bg-gray-800 border border-gray-600 rounded p-1" placeholder="Task done..."/>
-                        </div>
-                        <button onClick={submitLog} className="w-full bg-orange-600 py-1 rounded text-sm">Submit Log</button>
-                    </div>
-                </div>
-            )}
+          {/* PHASE 3: DEVELOPMENT */}
+{project && isPhase3Active(project.status, project) && (
+  <div className="bg-gray-800 p-6 rounded-xl border border-orange-500 shadow-orange-900/20">
+    <h2 className="text-xl font-bold mb-4 flex items-center text-orange-400">
+      <span className="mr-3">🛠️</span> Phase 3: Development
+    </h2>
+    
+    {/* Show completion message if initial defense is complete */}
+    {isInitialDefenseComplete(project) && (
+      <div className="mb-4 p-3 bg-green-900/20 border border-green-500/50 rounded-lg">
+        <p className="text-green-300 font-bold mb-1">✅ Initial Defense Complete!</p>
+        <p className="text-sm text-green-200">
+          Total Marks: {(
+            (project.initialDefenseMarks.coordinator || 0) + 
+            (project.initialDefenseMarks.supervisor || 0) + 
+            (project.initialDefenseMarks.panel || 0)
+          ).toFixed(1)}/15
+        </p>
+      </div>
+    )}
+    
+    <div className="grid grid-cols-2 gap-4 mb-6">
+      <div>
+        <label className="block text-sm text-gray-400 mb-2">Software Requirements Specification (SRS)</label>
+        <form onSubmit={(e) => handleUpload(e, 'srs')} className="space-y-2">
+          <input 
+            type="file" 
+            onChange={e=>setSrsFile(e.target.files[0])} 
+            className="w-full text-sm p-2 bg-gray-900 border border-gray-700 rounded"
+            accept=".pdf,.doc,.docx"
+          />
+          <button 
+            type="submit" 
+            disabled={uploading || !srsFile}
+            className="w-full bg-orange-600 hover:bg-orange-700 text-white py-2 rounded font-bold text-sm disabled:opacity-50"
+          >
+            {uploading ? 'Uploading...' : '📄 Upload SRS'}
+          </button>
+        </form>
+      </div>
+      
+      <div>
+        <label className="block text-sm text-gray-400 mb-2">Software Design Specification (SDS)</label>
+        <form onSubmit={(e) => handleUpload(e, 'sds')} className="space-y-2">
+          <input 
+            type="file" 
+            onChange={e=>setSdsFile(e.target.files[0])} 
+            className="w-full text-sm p-2 bg-gray-900 border border-gray-700 rounded"
+            accept=".pdf,.doc,.docx"
+          />
+          <button 
+            type="submit" 
+            disabled={uploading || !sdsFile}
+            className="w-full bg-orange-600 hover:bg-orange-700 text-white py-2 rounded font-bold text-sm disabled:opacity-50"
+          >
+            {uploading ? 'Uploading...' : '📄 Upload SDS'}
+          </button>
+        </form>
+      </div>
+    </div>
+
+    {/* Weekly Logs Section */}
+    <div className="bg-gray-900 p-4 rounded border border-gray-600">
+      <h3 className="text-sm font-bold mb-2 text-gray-300">📝 Weekly Progress Logs</h3>
+      <div className="flex gap-2 mb-2">
+        <div className="flex-1">
+          <label className="text-xs text-gray-400 mb-1 block">Week Number</label>
+          <input 
+            type="number" 
+            value={weekNo} 
+            onChange={e=>setWeekNo(e.target.value)} 
+            className="w-full bg-gray-800 border border-gray-600 rounded p-2 text-white"
+            min="1"
+            max="16"
+            placeholder="Week"
+          />
+        </div>
+        <div className="flex-1">
+          <label className="text-xs text-gray-400 mb-1 block">Log Content</label>
+          <input 
+            type="text" 
+            value={logContent} 
+            onChange={e=>setLogContent(e.target.value)} 
+            className="w-full bg-gray-800 border border-gray-600 rounded p-2 text-white"
+            placeholder="What did you accomplish this week?"
+          />
+        </div>
+      </div>
+      <button 
+        onClick={submitLog} 
+        disabled={!logContent.trim()}
+        className="w-full bg-orange-600 hover:bg-orange-700 py-2 rounded text-sm font-bold disabled:opacity-50"
+      >
+        Submit Weekly Log
+      </button>
+    </div>
+    
+    {/* Show uploaded documents if they exist */}
+    {(project.srsUrl || project.sdsUrl) && (
+      <div className="mt-4 pt-4 border-t border-gray-700">
+        <h4 className="text-sm font-bold text-gray-300 mb-2">📁 Uploaded Documents</h4>
+        <div className="space-y-2">
+          {project.srsUrl && (
+            <a 
+              href={`http://localhost:5000/${project.srsUrl}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-between p-2 bg-gray-900 hover:bg-gray-800 rounded text-sm"
+            >
+              <span>📄 SRS Document</span>
+              <span className="text-blue-400 text-xs">View</span>
+            </a>
+          )}
+          {project.sdsUrl && (
+            <a 
+              href={`http://localhost:5000/${project.sdsUrl}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-between p-2 bg-gray-900 hover:bg-gray-800 rounded text-sm"
+            >
+              <span>📄 SDS Document</span>
+              <span className="text-blue-400 text-xs">View</span>
+            </a>
+          )}
+        </div>
+      </div>
+    )}
+  </div>
+)}
 
             {/* PHASE 4: FINALIZATION */}
             {project && isPhase4Active(project.status) && (
@@ -314,6 +435,86 @@ const StudentDashboard = () => {
                                     ['Defense Cleared', 'Proposal Approved', 'Interim Scheduled', 'Final Scheduled', 'Completed'].includes(project.status)
                                 } label="Defense Cleared" />
                              </div>
+                             {/* Initial Defense Marks Table */}
+{project?.initialDefenseMarks && (
+  <div className="bg-gray-800 rounded-lg shadow-lg p-6 border border-gray-700 mt-6">
+    <h3 className="text-lg font-bold mb-4 flex items-center">
+      <span className="mr-2">📊</span> Initial Defense Marks (15%)
+    </h3>
+    <div className="overflow-x-auto">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="bg-gray-900/50">
+            <th className="py-2 px-3 text-left">Evaluator</th>
+            <th className="py-2 px-3 text-left">Marks (out of 5)</th>
+            <th className="py-2 px-3 text-left">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td className="py-2 px-3">Coordinator</td>
+            <td className="py-2 px-3 font-bold">
+              {project.initialDefenseMarks.coordinator !== null 
+                ? `${project.initialDefenseMarks.coordinator}/5` 
+                : 'Pending'}
+            </td>
+            <td className="py-2 px-3">
+              {project.initialDefenseMarks.coordinator !== null 
+                ? <span className="text-green-400">✓ Evaluated</span>
+                : <span className="text-yellow-400">⏳ Waiting</span>}
+            </td>
+          </tr>
+          <tr>
+            <td className="py-2 px-3">Supervisor</td>
+            <td className="py-2 px-3 font-bold">
+              {project.initialDefenseMarks.supervisor !== null 
+                ? `${project.initialDefenseMarks.supervisor}/5` 
+                : 'Pending'}
+            </td>
+            <td className="py-2 px-3">
+              {project.initialDefenseMarks.supervisor !== null 
+                ? <span className="text-green-400">✓ Evaluated</span>
+                : <span className="text-yellow-400">⏳ Waiting</span>}
+            </td>
+          </tr>
+          <tr>
+            <td className="py-2 px-3">Panel Member</td>
+            <td className="py-2 px-3 font-bold">
+              {project.initialDefenseMarks.panel !== null 
+                ? `${project.initialDefenseMarks.panel}/5` 
+                : 'Pending'}
+            </td>
+            <td className="py-2 px-3">
+              {project.initialDefenseMarks.panel !== null 
+                ? <span className="text-green-400">✓ Evaluated</span>
+                : <span className="text-yellow-400">⏳ Waiting</span>}
+            </td>
+          </tr>
+          <tr className="border-t border-gray-700">
+            <td className="py-2 px-3 font-bold">Total</td>
+            <td className="py-2 px-3 font-bold text-green-400">
+              {((project.initialDefenseMarks.coordinator || 0) + 
+                (project.initialDefenseMarks.supervisor || 0) + 
+                (project.initialDefenseMarks.panel || 0)).toFixed(1)}/15
+            </td>
+            <td className="py-2 px-3">
+              {project.initialDefenseCompleted 
+                ? <span className="text-green-400">✅ Completed</span>
+                : <span className="text-yellow-400">⏳ In Progress</span>}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    
+    {project.initialDefenseMarks.feedback && (
+      <div className="mt-4 p-3 bg-gray-900/50 rounded border border-gray-600">
+        <p className="text-sm text-gray-400 mb-1">Overall Feedback:</p>
+        <p className="text-white text-sm">{project.initialDefenseMarks.feedback}</p>
+      </div>
+    )}
+  </div>
+)}
                         </div>
                     </div>
                 )}

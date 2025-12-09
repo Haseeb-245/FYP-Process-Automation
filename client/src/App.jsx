@@ -10,7 +10,8 @@ import BoardDashboard from './pages/board/BoardDashboard';
 import FypCoordinator, { 
   Dashboard, 
   AllProjects, 
-  ScheduleDefense, 
+  ScheduleDefense,
+   InitialDefenseEvaluation, 
 } from "./pages/coordinator/FypCoordinator";
 
 function App() {
@@ -34,7 +35,8 @@ function App() {
           <Route path="all-projects" element={<AllProjects />} />
       
           <Route path="schedule-defense" element={<ScheduleDefense />} />
-       
+        <Route path="initial-defense-evaluation" element={<InitialDefenseEvaluation />} />
+
         </Route>
 
         {/* 5. Supervisor Dashboard */}
