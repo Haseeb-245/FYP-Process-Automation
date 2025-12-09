@@ -52,9 +52,7 @@ router.post('/upload', upload.single('file'), async (req, res) => {
   }
 });
 
-// --- NEW ROUTE: Upload Presentation (Phase 2) ---
-// Your partner's code might have missed this one. 
-// It allows the student to upload the PPT after defense is scheduled.
+// Upload Presentation (Phase 2)
 router.post('/upload-ppt', upload.single('file'), async (req, res) => {
     try {
       const { studentId } = req.body;
@@ -93,11 +91,14 @@ router.get('/my-project/:studentId', async (req, res) => {
 
 router.get('/pending', async (req, res) => {
   try {
+    console.log('📥 Fetching pending proposals...');
     const projects = await Project.find({ status: 'Pending Coordinator Review' })
       .populate('leaderId', 'name enrollment email');
+    console.log('✅ Found', projects.length, 'pending proposals');
     res.json(projects);
   } catch (error) {
-    res.status(500).json({ message: 'Server Error' });
+    console.error('❌ Error fetching pending proposals:', error);
+    res.status(500).json({ message: 'Server Error', error: error.message });
   }
 });
 
@@ -110,6 +111,7 @@ router.get('/supervisors', async (req, res) => {
   }
 });
 
+// 🔹 UPDATED: Changed status to 'Approved - Waiting for Supervisor Consent'
 router.put('/assign-supervisor/:id', async (req, res) => {
   try {
     const { supervisorId, feedback } = req.body;
@@ -117,7 +119,7 @@ router.put('/assign-supervisor/:id', async (req, res) => {
       req.params.id,
       {
         supervisorId: supervisorId,
-        status: 'Pending Supervisor Consent',
+        status: 'Approved - Waiting for Supervisor Consent', // 🔹 CHANGED
         supervisorConsent: 'Pending',
         coordinatorFeedback: feedback || null
       },
@@ -125,6 +127,7 @@ router.put('/assign-supervisor/:id', async (req, res) => {
     ).populate('supervisorId', 'name email');
     res.json({ message: 'Supervisor assigned! Waiting for consent.', project });
   } catch (error) {
+    console.error("Assign Error:", error);
     res.status(500).json({ message: 'Server Error' });
   }
 });
@@ -145,19 +148,31 @@ router.put('/decision/:id', async (req, res) => {
   }
 });
 
+// 🔹 UPDATED: Added room field and validation
 router.put('/assign-defense/:id', async (req, res) => {
     try {
-        const { date } = req.body;
-        const project = await Project.findByIdAndUpdate(
-            req.params.id, 
-            { 
-                defenseDate: date,
-                status: 'Scheduled for Defense' 
-            }, 
-            { new: true }
-        );
-        res.json({ message: "Defense Date Assigned", project });
+        const { date, room } = req.body; // 🔹 Added room
+        
+        const project = await Project.findById(req.params.id);
+        if (!project) {
+          return res.status(404).json({ message: 'Project not found' });
+        }
+
+        // 🔹 Check if project is ready for defense
+        if (project.status !== 'Approved - Ready for Defense') {
+          return res.status(400).json({ 
+            message: 'Defense can only be scheduled after supervisor approval' 
+          });
+        }
+
+        project.defenseDate = date;
+        project.defenseRoom = room; // 🔹 Added room
+        project.status = 'Scheduled for Defense';
+        await project.save();
+
+        res.json({ message: "Defense Date and Room Assigned", project });
     } catch (error) {
+        console.error("Assign Defense Error:", error);
         res.status(500).json({ message: "Server Error" });
     }
 });
@@ -166,8 +181,12 @@ router.get('/stats', async (req, res) => {
   try {
     const totalProjects = await Project.countDocuments();
     const pendingProposals = await Project.countDocuments({ status: 'Pending Coordinator Review' });
-    const approvedProjects = await Project.countDocuments({ status: 'Approved' });
-    const rejectedProjects = await Project.countDocuments({ status: 'Rejected' });
+    const approvedProjects = await Project.countDocuments({ 
+      status: { $in: ['Approved - Waiting for Supervisor Consent', 'Approved - Ready for Defense', 'Scheduled for Defense'] }
+    });
+    const rejectedProjects = await Project.countDocuments({ 
+      status: { $in: ['Rejected', 'Supervisor Rejected'] }
+    });
     res.json({ totalProjects, pendingProposals, approvedProjects, rejectedProjects });
   } catch (error) {
     res.status(500).json({ message: 'Server Error' });
@@ -190,10 +209,11 @@ router.get('/supervisor-pending/:supervisorId', async (req, res) => {
   }
 });
 
+// 🔹 UPDATED: Changed status to 'Approved - Ready for Defense'
 router.put('/supervisor-decision/:id', async (req, res) => {
   try {
     const { decision, feedback } = req.body;
-    const status = decision === 'Approved' ? 'Supervisor Approved' : 'Supervisor Rejected';
+    const status = decision === 'Approved' ? 'Approved - Ready for Defense' : 'Supervisor Rejected'; // 🔹 CHANGED
     const project = await Project.findByIdAndUpdate(
       req.params.id,
       {
@@ -205,6 +225,7 @@ router.put('/supervisor-decision/:id', async (req, res) => {
     ).populate('leaderId', 'name enrollment email').populate('supervisorId', 'name email');
     res.json({ message: `Consent ${decision}`, project });
   } catch (error) {
+    console.error("Supervisor Decision Error:", error);
     res.status(500).json({ message: 'Server Error' });
   }
 });
@@ -231,19 +252,21 @@ router.put('/defense-decision/:id', async (req, res) => {
     }
 });
 
-// Get Projects for Defense
+// 🔹 UPDATED: Added 'Approved - Ready for Defense' to query
 router.get('/defense-pending', async (req, res) => {
   try {
+    console.log('📥 Fetching defense-pending projects...');
     const projects = await Project.find({ 
-      status: { $in: ['Scheduled for Defense', 'Defense Changes Required'] } 
-    }).populate('leaderId', 'name enrollment email');
+      status: { $in: ['Approved - Ready for Defense', 'Scheduled for Defense', 'Defense Changes Required'] } // 🔹 CHANGED
+    }).populate('leaderId', 'name enrollment email')
+      .populate('supervisorId', 'name email'); // 🔹 Added supervisor populate
+    
+    console.log('✅ Found', projects.length, 'defense-ready projects');
     res.json(projects);
   } catch (error) {
-    console.error("Fetch Defense Error:", error);
-    res.status(500).json({ message: 'Server Error' });
+    console.error("❌ Fetch Defense Error:", error);
+    res.status(500).json({ message: 'Server Error', error: error.message });
   }
 });
-
-
 
 module.exports = router;

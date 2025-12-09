@@ -3,24 +3,16 @@ import { useNavigate, Outlet } from "react-router-dom";
 import {
   BarChart3,
   FileText,
-  Users,
   Calendar,
-  UserCog,
   LogOut,
-  Bell,
-  Search,
-  Filter,
-  Download,
   Eye,
   CheckCircle,
   XCircle,
   AlertCircle,
   Clock,
-  TrendingUp,
   FileCheck,
-  Send,
-  User,
-  MoreVertical
+  Download,
+  Search,
 } from "lucide-react";
 
 const FypCoordinator = () => {
@@ -80,7 +72,6 @@ const FypCoordinator = () => {
           </div>
 
           <div className="flex items-center space-x-4">
-            {/* User Profile */}
             <div className="flex items-center space-x-3">
               <div className="text-right hidden md:block">
                 <p className="font-medium">{coordinator.name}</p>
@@ -126,21 +117,9 @@ const FypCoordinator = () => {
                 collapsed={!sidebarOpen}
               />
               <SidebarButton 
-                icon={<Users className="w-5 h-5" />} 
-                label="Assign Groups" 
-                onClick={() => navigate('/coordinator/assign-groups')}
-                collapsed={!sidebarOpen}
-              />
-              <SidebarButton 
                 icon={<Calendar className="w-5 h-5" />} 
                 label="Schedule Defense" 
                 onClick={() => navigate('/coordinator/schedule-defense')}
-                collapsed={!sidebarOpen}
-              />
-              <SidebarButton 
-                icon={<UserCog className="w-5 h-5" />} 
-                label="Manage Panels" 
-                onClick={() => navigate('/coordinator/panels')}
                 collapsed={!sidebarOpen}
               />
             </div>
@@ -196,6 +175,7 @@ export const Dashboard = () => {
     try {
       const response = await fetch('http://localhost:5000/api/projects/supervisors');
       const data = await response.json();
+      console.log('Supervisors fetched:', data);
       setSupervisors(data);
     } catch (error) {
       console.error('Error fetching supervisors:', error);
@@ -207,6 +187,7 @@ export const Dashboard = () => {
       setLoading(true);
       const response = await fetch('http://localhost:5000/api/projects/pending');
       const data = await response.json();
+      console.log('Proposals fetched:', data);
       setProposals(data);
     } catch (error) {
       console.error('Error fetching proposals:', error);
@@ -217,7 +198,6 @@ export const Dashboard = () => {
   };
 
   const handleDecision = async (projectId, status) => {
-    // For approval, must select supervisor
     if (status === 'Approved' && !selectedSupervisor) {
       alert('Please select a supervisor before approving!');
       return;
@@ -233,7 +213,6 @@ export const Dashboard = () => {
       
       let response;
       if (status === 'Approved') {
-        // Approve and assign supervisor
         response = await fetch(`http://localhost:5000/api/projects/assign-supervisor/${projectId}`, {
           method: 'PUT',
           headers: {
@@ -245,7 +224,6 @@ export const Dashboard = () => {
           }),
         });
       } else {
-        // Reject or request changes
         response = await fetch(`http://localhost:5000/api/projects/decision/${projectId}`, {
           method: 'PUT',
           headers: {
@@ -284,9 +262,12 @@ export const Dashboard = () => {
     switch(status) {
       case 'Pending Coordinator Review': return 'bg-yellow-500/20 text-yellow-300 border border-yellow-500/30';
       case 'Approved': return 'bg-green-500/20 text-green-300 border border-green-500/30';
+      case 'Approved - Waiting for Supervisor Consent': return 'bg-purple-500/20 text-purple-300 border border-purple-500/30';
+      case 'Approved - Ready for Defense': return 'bg-blue-500/20 text-blue-300 border border-blue-500/30';
+      case 'Scheduled for Defense': return 'bg-green-500/20 text-green-300 border border-green-500/30';
       case 'Rejected': return 'bg-red-500/20 text-red-300 border border-red-500/30';
+      case 'Supervisor Rejected': return 'bg-red-500/20 text-red-300 border border-red-500/30';
       case 'Changes Required': return 'bg-orange-500/20 text-orange-300 border border-orange-500/30';
-      case 'Pending Supervisor Consent': return 'bg-purple-500/20 text-purple-300 border border-purple-500/30';
       default: return 'bg-gray-500/20 text-gray-300 border border-gray-500/30';
     }
   };
@@ -557,40 +538,458 @@ export const Dashboard = () => {
   );
 };
 
-// Other stub components
-export const PendingProposals = () => (
-  <div>
-    <h1 className="text-3xl font-bold mb-6">Pending Proposals</h1>
-    <p>List of pending proposals will appear here</p>
-  </div>
-);
+// ============================================
+// ALL PROJECTS COMPONENT
+// ============================================
+export const AllProjects = () => {
+  const [projects, setProjects] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterStatus, setFilterStatus] = useState('All');
 
-export const AllProjects = () => (
-  <div>
-    <h1 className="text-3xl font-bold mb-6">All Projects</h1>
-    <p>Complete project list</p>
-  </div>
-);
+  useEffect(() => {
+    fetchAllProjects();
+  }, []);
 
-export const AssignGroups = () => (
-  <div>
-    <h1 className="text-3xl font-bold mb-6">Assign Groups</h1>
-    <p>Group assignment interface</p>
-  </div>
-);
+  const fetchAllProjects = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('http://localhost:5000/api/projects/defense-pending');
+      const data = await response.json();
+      
+      // Also fetch pending proposals
+      const pendingResponse = await fetch('http://localhost:5000/api/projects/pending');
+      const pendingData = await pendingResponse.json();
+      
+      // Combine all projects
+      const allProjects = [...data, ...pendingData];
+      console.log('All projects:', allProjects);
+      setProjects(allProjects);
+    } catch (error) {
+      console.error('Error fetching projects:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-export const ScheduleDefense = () => (
-  <div>
-    <h1 className="text-3xl font-bold mb-6">Schedule Defense</h1>
-    <p>Defense scheduling tool</p>
-  </div>
-);
+  const getStatusColor = (status) => {
+    switch(status) {
+      case 'Pending Coordinator Review': return 'bg-yellow-500/20 text-yellow-300 border border-yellow-500/30';
+      case 'Approved - Waiting for Supervisor Consent': return 'bg-purple-500/20 text-purple-300 border border-purple-500/30';
+      case 'Approved - Ready for Defense': return 'bg-blue-500/20 text-blue-300 border border-blue-500/30';
+      case 'Scheduled for Defense': return 'bg-green-500/20 text-green-300 border border-green-500/30';
+      case 'Rejected': return 'bg-red-500/20 text-red-300 border border-red-500/30';
+      case 'Supervisor Rejected': return 'bg-red-500/20 text-red-300 border border-red-500/30';
+      case 'Changes Required': return 'bg-orange-500/20 text-orange-300 border border-orange-500/30';
+      case 'Defense Passed': return 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30';
+      default: return 'bg-gray-500/20 text-gray-300 border border-gray-500/30';
+    }
+  };
 
-export const ManagePanels = () => (
-  <div>
-    <h1 className="text-3xl font-bold mb-6">Manage Panels</h1>
-    <p>Panel management interface</p>
-  </div>
-);
+  const filteredProjects = projects.filter(project => {
+    const matchesSearch = project.leaderId?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         project.leaderId?.enrollment?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesFilter = filterStatus === 'All' || project.status === filterStatus;
+    return matchesSearch && matchesFilter;
+  });
 
-export default FypCoordinator;
+  const statusOptions = [
+    'All',
+    'Pending Coordinator Review',
+    'Approved - Waiting for Supervisor Consent',
+    'Approved - Ready for Defense',
+    'Scheduled for Defense',
+    'Defense Passed',
+    'Rejected',
+    'Supervisor Rejected',
+    'Changes Required'
+  ];
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mx-auto"></div>
+          <p className="mt-4 text-gray-300">Loading projects...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-8">
+      <div>
+        <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+          All Projects
+        </h1>
+        <p className="text-gray-400 mt-2">Complete overview of all FYP submissions</p>
+      </div>
+
+      {/* Filters */}
+      <div className="flex flex-col md:flex-row gap-4">
+        <div className="flex-1">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+            <input
+              type="text"
+              placeholder="Search by student name or enrollment..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-3 bg-gray-800 border border-gray-700 text-white rounded-lg focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+        </div>
+        <select
+          value={filterStatus}
+          onChange={(e) => setFilterStatus(e.target.value)}
+          className="px-4 py-3 bg-gray-800 border border-gray-700 text-white rounded-lg focus:ring-2 focus:ring-blue-500"
+        >
+          {statusOptions.map(status => (
+            <option key={status} value={status}>{status}</option>
+          ))}
+        </select>
+        <button
+          onClick={fetchAllProjects}
+          className="px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all"
+        >
+          🔄 Refresh
+        </button>
+      </div>
+
+      {/* Projects Table */}
+      <div className="bg-gray-800/50 backdrop-blur-lg rounded-2xl border border-gray-700 shadow-xl overflow-hidden">
+        <div className="p-6 border-b border-gray-700">
+          <h2 className="text-xl font-semibold text-white flex items-center">
+            <FileCheck className="w-6 h-6 mr-3 text-blue-400" />
+            Projects ({filteredProjects.length})
+          </h2>
+        </div>
+
+        {filteredProjects.length === 0 ? (
+          <div className="p-12 text-center">
+            <div className="text-6xl mb-4">📂</div>
+            <h3 className="text-xl font-semibold text-white mb-2">No Projects Found</h3>
+            <p className="text-gray-400">Try adjusting your filters.</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-900/50">
+                <tr>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase">Student</th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase">Enrollment</th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase">Supervisor</th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase">Status</th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase">Defense Date</th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-700/50">
+                {filteredProjects.map((project) => (
+                  <tr key={project._id} className="hover:bg-gray-700/30 transition-colors">
+                    <td className="px-6 py-4">
+                      <div className="font-semibold text-white">
+                        {project.leaderId?.name || 'Unknown'}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-400">
+                      {project.leaderId?.enrollment || 'N/A'}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-400">
+                      {project.supervisorId?.name || 'Not Assigned'}
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={`px-3 py-1.5 text-xs font-semibold rounded-full ${getStatusColor(project.status)}`}>
+                        {project.status}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-400">
+                      {project.defenseDate ? new Date(project.defenseDate).toLocaleDateString() : 'Not Scheduled'}
+                    </td>
+                    <td className="px-6 py-4">
+                      <a
+                        href={`http://localhost:5000/${project.documentUrl}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all inline-flex items-center"
+                      >
+                        <Download className="w-4 h-4 mr-2" />
+                        View
+                      </a>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// ============================================
+// SCHEDULE DEFENSE COMPONENT
+// ============================================
+export const ScheduleDefense = () => {
+  const [projects, setProjects] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedProject, setSelectedProject] = useState(null);
+  const [defenseDate, setDefenseDate] = useState('');
+  const [processing, setProcessing] = useState(false);
+
+  useEffect(() => {
+    fetchDefensePendingProjects();
+  }, []);
+
+  const fetchDefensePendingProjects = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('http://localhost:5000/api/projects/defense-pending');
+      const data = await response.json();
+      console.log('Defense pending projects:', data);
+      setProjects(data);
+    } catch (error) {
+      console.error('Error fetching projects:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleScheduleDefense = async () => {
+    if (!defenseDate) {
+      alert('Please select a defense date!');
+      return;
+    }
+
+    if (!window.confirm('Are you sure you want to schedule this defense?')) {
+      return;
+    }
+
+    try {
+      setProcessing(true);
+      const response = await fetch(`http://localhost:5000/api/projects/assign-defense/${selectedProject._id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ date: defenseDate }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        alert('Defense scheduled successfully!');
+        setSelectedProject(null);
+        setDefenseDate('');
+        fetchDefensePendingProjects();
+      } else {
+        alert(data.message || 'Failed to schedule defense');
+      }
+    } catch (error) {
+      console.error('Error scheduling defense:', error);
+      alert('Server error');
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const getStatusColor = (status) => {
+    switch(status) {
+      case 'Approved - Ready for Defense': return 'bg-blue-500/20 text-blue-300 border border-blue-500/30';
+      case 'Scheduled for Defense': return 'bg-green-500/20 text-green-300 border border-green-500/30';
+      case 'Defense Changes Required': return 'bg-orange-500/20 text-orange-300 border border-orange-500/30';
+      default: return 'bg-gray-500/20 text-gray-300 border border-gray-500/30';
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mx-auto"></div>
+          <p className="mt-4 text-gray-300">Loading projects...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-8">
+      <div>
+        <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+          Schedule Defense
+        </h1>
+        <p className="text-gray-400 mt-2">Schedule defense dates for approved projects</p>
+      </div>
+
+      <div className="flex gap-4">
+        <button
+          onClick={fetchDefensePendingProjects}
+          className="px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl hover:from-blue-600 hover:to-blue-700 transition-all shadow-lg"
+        >
+          🔄 Refresh List
+        </button>
+      </div>
+
+      {/* Projects Table */}
+      <div className="bg-gray-800/50 backdrop-blur-lg rounded-2xl border border-gray-700 shadow-xl overflow-hidden">
+        <div className="p-6 border-b border-gray-700">
+          <h2 className="text-xl font-semibold text-white flex items-center">
+            <Calendar className="w-6 h-6 mr-3 text-blue-400" />
+            Projects Ready for Defense ({projects.length})
+          </h2>
+        </div>
+
+        {projects.length === 0 ? (
+          <div className="p-12 text-center">
+            <div className="text-6xl mb-4">📅</div>
+            <h3 className="text-xl font-semibold text-white mb-2">No Projects Ready</h3>
+            <p className="text-gray-400">Projects will appear here after supervisor approval.</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-900/50">
+                <tr>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase">Student</th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase">Enrollment</th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase">Supervisor</th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase">Status</th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase">Defense Date</th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-700/50">
+                {projects.map((project) => (
+                  <tr key={project._id} className="hover:bg-gray-700/30 transition-colors">
+                    <td className="px-6 py-4">
+                      <div className="font-semibold text-white">
+                        {project.leaderId?.name || 'Unknown'}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-400">
+                      {project.leaderId?.enrollment || 'N/A'}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-400">
+                      {project.supervisorId?.name || 'Not Assigned'}
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={`px-3 py-1.5 text-xs font-semibold rounded-full ${getStatusColor(project.status)}`}>
+                        {project.status}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-400">
+                      {project.defenseDate ? new Date(project.defenseDate).toLocaleDateString() : 'Not Scheduled'}
+                    </td>
+                    <td className="px-6 py-4">
+                      <button
+                        onClick={() => setSelectedProject(project)}
+                        disabled={project.status === 'Scheduled for Defense'}
+                        className="px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg hover:from-green-600 hover:to-green-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {project.status === 'Scheduled for Defense' ? '✅ Scheduled' : '📅 Schedule'}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Schedule Modal */}
+      {selectedProject && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl shadow-2xl max-w-2xl w-full border border-gray-700">
+            <div className="p-6 border-b border-gray-700">
+              <div className="flex justify-between items-start">
+                <div>
+                  <h2 className="text-2xl font-bold text-white">Schedule Defense</h2>
+                  <p className="text-gray-400 mt-1">
+                    Student: {selectedProject.leaderId?.name}
+                  </p>
+                </div>
+                <button
+                  onClick={() => {
+                    setSelectedProject(null);
+                    setDefenseDate('');
+                  }}
+                  className="text-gray-400 hover:text-gray-200 text-2xl"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6 space-y-6">
+              {/* Project Info */}
+              <div className="bg-gray-900 p-4 rounded-lg">
+                <h3 className="font-semibold text-white mb-3">Project Information</h3>
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <span className="text-gray-400">Student:</span>
+                    <div className="font-medium text-white mt-1">{selectedProject.leaderId?.name}</div>
+                  </div>
+                  <div>
+                    <span className="text-gray-400">Enrollment:</span>
+                    <div className="font-medium text-white mt-1">{selectedProject.leaderId?.enrollment}</div>
+                  </div>
+                  <div>
+                    <span className="text-gray-400">Supervisor:</span>
+                    <div className="font-medium text-white mt-1">{selectedProject.supervisorId?.name || 'Not Assigned'}</div>
+                  </div>
+                  <div>
+                    <span className="text-gray-400">Status:</span>
+                    <div className="font-medium text-white mt-1">
+                      <span className={`px-2 py-1 text-xs rounded-full ${getStatusColor(selectedProject.status)}`}>
+                        {selectedProject.status}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Date Selection */}
+              <div>
+                <label className="block font-semibold text-white mb-2">
+                  Select Defense Date <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="datetime-local"
+                  value={defenseDate}
+                  onChange={(e) => setDefenseDate(e.target.value)}
+                  className="w-full p-3 bg-gray-900 border border-gray-700 text-white rounded-lg focus:ring-2 focus:ring-blue-500"
+                  min={new Date().toISOString().slice(0, 16)}
+                />
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-3 pt-4">
+                <button
+                  onClick={handleScheduleDefense}
+                  disabled={processing}
+                  className="flex-1 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium disabled:opacity-50"
+                >
+                  ✅ Schedule Defense
+                </button>
+                <button
+                  onClick={() => {
+                    setSelectedProject(null);
+                    setDefenseDate('');
+                  }}
+                  className="px-6 py-3 bg-gray-700 text-white rounded-lg hover:bg-gray-600 font-medium"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default FypCoordinator

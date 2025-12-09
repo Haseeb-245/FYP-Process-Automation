@@ -9,11 +9,8 @@ import BoardDashboard from './pages/board/BoardDashboard';
 
 import FypCoordinator, { 
   Dashboard, 
-  PendingProposals, 
   AllProjects, 
-  AssignGroups, 
   ScheduleDefense, 
-  ManagePanels 
 } from "./pages/coordinator/FypCoordinator";
 
 function App() {
@@ -33,11 +30,11 @@ function App() {
         <Route path="/coordinator" element={<FypCoordinator />}>
           <Route index element={<Dashboard />} />
           <Route path="dashboard" element={<Dashboard />} />
-          <Route path="proposals" element={<PendingProposals />} />
+    
           <Route path="all-projects" element={<AllProjects />} />
-          <Route path="assign-groups" element={<AssignGroups />} />
+      
           <Route path="schedule-defense" element={<ScheduleDefense />} />
-          <Route path="panels" element={<ManagePanels />} />
+       
         </Route>
 
         {/* 5. Supervisor Dashboard */}
