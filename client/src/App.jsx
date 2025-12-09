@@ -1,10 +1,12 @@
-// App.jsx
 import React from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom'; // Add BrowserRouter
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Login from './pages/Login';
 import Landing from './pages/Landing';
 import SupervisorDashboard from './pages/supervisor/SupervisorDashboard';
 import StudentDashboard from './pages/student/StudentDashboard';
+// --- RE-ADDED IMPORT ---
+import BoardDashboard from './pages/board/BoardDashboard'; 
+
 import FypCoordinator, { 
   Dashboard, 
   PendingProposals, 
@@ -41,8 +43,8 @@ function App() {
         {/* 5. Supervisor Dashboard */}
         <Route path="/supervisor/dashboard" element={<SupervisorDashboard />} />
         
-        {/* 6. Board Dashboard */}
-        <Route path="/board/dashboard" element={<div className="text-white p-10">FYP Board Dashboard (Coming Soon)</div>} />
+        {/* 6. Board Dashboard (Panel Member) - RE-ADDED ROUTE */}
+        <Route path="/board/dashboard" element={<BoardDashboard />} />
         
         {/* 7. 404 Page */}
         <Route path="*" element={<div className="text-white p-10">404 - Page Not Found</div>} />
