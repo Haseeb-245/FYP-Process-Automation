@@ -24,7 +24,7 @@ const SupervisorDashboard = () => {
   
   // Log Writing State
   const [logContent, setLogContent] = useState('');
-  const [activeLogId, setActiveLogId] = useState(null); // { projectId, weekNumber }
+  const [activeLogId, setActiveLogId] = useState(null);
 
   useEffect(() => {
     const userInfo = JSON.parse(localStorage.getItem('userInfo'));
@@ -51,8 +51,6 @@ const SupervisorDashboard = () => {
       ] = await Promise.all([
         fetch(`http://localhost:5000/api/projects/supervisor-pending/${supervisorId}`),
         fetch(`http://localhost:5000/api/projects/supervisor-initial-defense/${supervisorId}`),
-        // Ensure your backend 'supervisor-srs-sds-review' route fetches statuses: 
-        // 'Development Phase', 'Final Defense Scheduled', etc.
         fetch(`http://localhost:5000/api/projects/supervisor-srs-sds-review/${supervisorId}`)
       ]);
 
@@ -61,13 +59,8 @@ const SupervisorDashboard = () => {
 
       if (srsSdsRes.ok) {
           const data = await srsSdsRes.json();
-          // Filter for SRS/SDS Review
           setSrsSdsReviewProjects(data.filter(p => p.srsSdsStatus === 'Pending Review' || p.srsSdsStatus === 'Under Review' || p.status === 'Ready for SRS/SDS Review'));
-          
-          // Filter for Phase 4 (Development)
           setDevelopmentProjects(data.filter(p => p.status === 'Development Phase'));
-          
-          // Filter for Phase 5 (Final Defense)
           setFinalDefenseProjects(data.filter(p => p.status.includes('Final Defense') || p.status === 'Project Completed'));
       }
 
@@ -78,16 +71,13 @@ const SupervisorDashboard = () => {
     }
   };
 
-  // --- HELPER: Fix Windows File Paths ---
   const getFileUrl = (path) => {
     if (!path) return '#';
-    // Replace backslashes with forward slashes for URL compatibility
     const cleanPath = path.replace(/\\/g, '/');
     return `http://localhost:5000/${cleanPath}`;
   };
 
   // --- ACTIONS ---
-
   const handleDecision = async (projectId, decision) => {
     if (decision === 'Approved') {
       if (!signatureName.trim()) return alert('Please enter your signature name');
@@ -226,238 +216,737 @@ const SupervisorDashboard = () => {
     } catch (error) { console.error(error); } finally { setProcessing(false); }
   };
 
+  const handleLogout = () => {
+    localStorage.removeItem('userInfo');
+    navigate('/');
+  };
+
   if (!supervisor) return <div className="text-white p-10">Loading...</div>;
-  if (loading) return <div className="min-h-screen bg-black flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div></div>;
+  if (loading) return (
+    <div className="min-h-screen bg-gradient-to-b from-[#0a2342] via-[#1a365d] to-[#0a2342] flex items-center justify-center">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
+        <p className="text-white/70">Loading dashboard...</p>
+      </div>
+    </div>
+  );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 to-black text-white">
-      <header className="bg-gray-800 shadow-lg border-b border-gray-700">
-        <div className="container mx-auto px-6 py-4 flex justify-between items-center">
-          <h1 className="text-2xl font-bold">Supervisor Dashboard</h1>
-          <button onClick={() => fetchAllData(supervisor._id)} className="bg-blue-600 px-4 py-2 rounded text-sm font-bold">Refresh</button>
+    <div className="min-h-screen bg-gradient-to-b from-[#0a2342] via-[#1a365d] to-[#0a2342] text-white">
+      {/* Header */}
+      <header className="bg-white/5 backdrop-blur-sm border-b border-white/10 shadow-lg">
+        <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
+          <div className="flex items-center gap-4">
+            <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center shadow">
+              <div className="text-center">
+                <div className="text-[9px] font-bold text-[#0a2342] leading-tight">BU</div>
+                <div className="text-[7px] font-bold text-[#0a2342] leading-tight">SUP</div>
+              </div>
+            </div>
+            <div>
+              <h1 className="text-xl font-bold text-white">Supervisor Dashboard</h1>
+              <p className="text-sm text-white/70">Welcome, {supervisor.name}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <button 
+              onClick={() => fetchAllData(supervisor._id)}
+              className="px-4 py-2 bg-white/10 hover:bg-white/20 border border-white/20 rounded-lg text-sm font-medium transition-all hover:scale-105 flex items-center gap-2"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              Refresh
+            </button>
+            <button 
+              onClick={handleLogout}
+              className="px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg text-sm font-medium transition-colors"
+            >
+              Logout
+            </button>
+          </div>
         </div>
       </header>
 
-      <div className="container mx-auto px-6 py-8 space-y-12">
-        
-        {/* 1. PENDING CONSENTS */}
-        {pendingConsents.length > 0 && (
+      <main className="max-w-7xl mx-auto px-6 py-8">
+        {/* Summary Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+          <SummaryCard 
+            title="Pending Consents"
+            count={pendingConsents.length}
+            color="bg-gradient-to-br from-yellow-900/30 to-yellow-800/20"
+            borderColor="border-yellow-500/30"
+            icon="📝"
+          />
+          <SummaryCard 
+            title="Initial Defense"
+            count={initialDefenseProjects.length}
+            color="bg-gradient-to-br from-green-900/30 to-green-800/20"
+            borderColor="border-green-500/30"
+            icon="🎤"
+          />
+          <SummaryCard 
+            title="Development Phase"
+            count={developmentProjects.length}
+            color="bg-gradient-to-br from-emerald-900/30 to-emerald-800/20"
+            borderColor="border-emerald-500/30"
+            icon="🛠️"
+          />
+          <SummaryCard 
+            title="Final Defense"
+            count={finalDefenseProjects.length}
+            color="bg-gradient-to-br from-red-900/30 to-red-800/20"
+            borderColor="border-red-500/30"
+            icon="🎓"
+          />
+        </div>
+
+        {/* Main Content Sections */}
+        <div className="space-y-8">
+          {/* 1. PENDING CONSENTS */}
+          {pendingConsents.length > 0 && (
             <section>
-                <h2 className="text-2xl font-bold mb-4 flex items-center"><span className="mr-2">📝</span> Pending Consents</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {pendingConsents.map(p => (
-                        <div key={p._id} className="bg-gray-800 p-6 rounded-lg border border-yellow-500/50">
-                            <h3 className="font-bold text-lg">{p.leaderId?.name}</h3>
-                            <p className="text-gray-400 text-sm mb-4">{p.leaderId?.enrollment}</p>
-                            <button onClick={() => setSelectedProject(p)} className="w-full bg-yellow-600 hover:bg-yellow-700 py-2 rounded text-white font-bold">
-                                Review Proposal
-                            </button>
-                        </div>
-                    ))}
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-10 h-10 bg-gradient-to-br from-yellow-900 to-yellow-800 rounded-lg flex items-center justify-center">
+                  <span className="text-2xl">📝</span>
                 </div>
+                <div>
+                  <h2 className="text-2xl font-bold text-white">Pending Consents</h2>
+                  <p className="text-sm text-white/60">Review and approve project proposals</p>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {pendingConsents.map(project => (
+                  <div key={project._id} className="bg-gradient-to-br from-slate-800 to-slate-900 backdrop-blur-sm rounded-xl border border-white/10 p-6 hover:border-yellow-500/30 transition-all hover:shadow-lg">
+                    <div className="flex items-start justify-between mb-4">
+                      <div>
+                        <h3 className="font-bold text-lg text-white mb-1">{project.leaderId?.name}</h3>
+                        <p className="text-sm text-white/60">{project.leaderId?.enrollment}</p>
+                        <p className="text-xs text-white/40 mt-2">Project Title:</p>
+                        <p className="text-sm text-white/80 truncate">{project.projectTitle || 'No title provided'}</p>
+                      </div>
+                      <span className="bg-yellow-900/30 text-yellow-400 text-xs px-3 py-1 rounded-full border border-yellow-500/30">
+                        Pending
+                      </span>
+                    </div>
+                    
+                    <div className="mt-4 pt-4 border-t border-white/10">
+                      <button 
+                        onClick={() => setSelectedProject(project)}
+                        className="w-full bg-gradient-to-r from-yellow-600 to-yellow-700 hover:from-yellow-500 hover:to-yellow-600 text-white font-medium py-2.5 px-4 rounded-lg transition-all hover:shadow-lg hover:shadow-yellow-500/25 flex items-center justify-center gap-2"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
+                        Review Proposal
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </section>
-        )}
+          )}
 
-        {/* 2. INITIAL DEFENSE EVALUATIONS */}
-        {initialDefenseProjects.length > 0 && (
-          <section>
-            <h2 className="text-2xl font-bold mb-4 flex items-center text-green-400">🎤 Initial Defense Evaluations</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {initialDefenseProjects.map((project) => (
-                <div key={project._id} className="bg-gray-800 rounded-lg shadow-lg p-6 border border-green-700">
-                  <h3 className="text-xl font-bold mb-1">{project.leaderId?.name}</h3>
-                  <p className="text-gray-400 text-sm mb-4">{project.leaderId?.enrollment}</p>
-                  
-                  {project.presentationUrl ? (
-                    <a
-                      href={getFileUrl(project.presentationUrl)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="block w-full text-center mb-4 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded font-bold transition-colors"
-                    >
-                      📥 Download Presentation (PPT)
-                    </a>
-                  ) : (
-                    <div className="mb-4 p-2 bg-gray-700 rounded text-center text-gray-400 text-sm">No PPT Uploaded</div>
-                  )}
-                  
-                  {project.initialDefenseMarks?.supervisor !== null && project.initialDefenseMarks?.supervisor !== undefined ? (
-                    <div className="p-3 bg-green-900/30 rounded border border-green-500 text-center">
-                      <p className="text-green-300 font-bold">✅ Evaluated</p>
-                      <p className="text-white">Marks: {project.initialDefenseMarks.supervisor}/5</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      <input type="number" id={`marks-${project._id}`} min="0" max="5" step="0.5" placeholder="Marks (0-5)" className="w-full p-2 bg-gray-900 border border-gray-600 rounded text-white"/>
-                      <textarea id={`feedback-${project._id}`} placeholder="Feedback (Optional)" className="w-full p-2 bg-gray-900 border border-gray-600 rounded text-white" rows="2"></textarea>
-                      <button onClick={() => handleInitialDefenseEvaluation(project._id)} disabled={processing} className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 rounded">Submit Evaluation</button>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {/* 3. SRS/SDS REVIEW */}
-        {srsSdsReviewProjects.length > 0 && (
+          {/* 2. INITIAL DEFENSE EVALUATIONS */}
+          {initialDefenseProjects.length > 0 && (
             <section>
-                <h2 className="text-2xl font-bold mb-4 flex items-center"><span className="mr-2">📋</span> SRS/SDS Reviews</h2>
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    {srsSdsReviewProjects.map(p => (
-                        <div key={p._id} className="bg-gray-800 p-6 rounded-lg border border-purple-500/50">
-                            <h3 className="font-bold text-lg">{p.leaderId?.name}</h3>
-                            <div className="flex gap-2 my-3">
-                                {p.srsUrl && <a href={getFileUrl(p.srsUrl)} target="_blank" className="text-blue-400 text-sm underline">View SRS</a>}
-                                {p.sdsUrl && <a href={getFileUrl(p.sdsUrl)} target="_blank" className="text-blue-400 text-sm underline">View SDS</a>}
-                            </div>
-                            
-                            {p.srsSdsStatus === 'Under Review' ? (
-                                p.srsSdsReviewMarks?.supervisor ? (
-                                    <div className="bg-green-900/30 p-2 rounded text-center text-green-300 font-bold border border-green-500">
-                                        ✅ Graded: {p.srsSdsReviewMarks.supervisor}/5
-                                    </div>
-                                ) : (
-                                    <div className="space-y-2 mt-4 border-t border-gray-700 pt-4">
-                                        <p className="text-sm font-bold text-green-400">Evaluate Documents (5%)</p>
-                                        <input type="number" id={`srs-sds-marks-${p._id}`} placeholder="Marks (0-5)" className="w-full bg-gray-900 p-2 rounded text-white"/>
-                                        <textarea id={`srs-sds-feedback-${p._id}`} placeholder="Feedback..." className="w-full bg-gray-900 p-2 rounded text-white" rows="2"></textarea>
-                                        <button onClick={() => handleSrsSdsEvaluation(p._id)} className="w-full bg-green-600 py-2 rounded font-bold">Submit Marks</button>
-                                    </div>
-                                )
-                            ) : (
-                                <div className="space-y-2">
-                                    <textarea id={`feedback-${p._id}`} placeholder="Review Feedback..." className="w-full bg-gray-900 p-2 rounded text-white text-sm" rows="2"></textarea>
-                                    <div className="flex gap-2">
-                                        <button onClick={() => handleSrsSdsDecision(p._id, 'Approved')} className="flex-1 bg-green-600 py-2 rounded font-bold text-sm">Approve</button>
-                                        <button onClick={() => handleSrsSdsDecision(p._id, 'Changes Required')} className="flex-1 bg-yellow-600 py-2 rounded font-bold text-sm">Changes Req.</button>
-                                    </div>
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-10 h-10 bg-gradient-to-br from-green-900 to-green-800 rounded-lg flex items-center justify-center">
+                  <span className="text-2xl">🎤</span>
+                </div>
+                <div>
+                  <h2 className="text-2xl font-bold text-white">Initial Defense Evaluations</h2>
+                  <p className="text-sm text-white/60">Evaluate student presentations (5 marks)</p>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {initialDefenseProjects.map((project) => (
+                  <div key={project._id} className="bg-gradient-to-br from-slate-800 to-slate-900 backdrop-blur-sm rounded-xl border border-white/10 p-6 hover:border-green-500/30 transition-all">
+                    <div className="flex items-start justify-between mb-4">
+                      <div>
+                        <h3 className="text-xl font-bold text-white mb-1">{project.leaderId?.name}</h3>
+                        <p className="text-sm text-white/60 mb-3">{project.leaderId?.enrollment}</p>
+                        <p className="text-sm text-white/80">{project.projectTitle}</p>
+                      </div>
+                      {project.initialDefenseMarks?.supervisor !== null && project.initialDefenseMarks?.supervisor !== undefined ? (
+                        <span className="bg-green-900/30 text-green-400 text-sm px-3 py-1 rounded-full border border-green-500/30">
+                          ✅ Evaluated
+                        </span>
+                      ) : (
+                        <span className="bg-yellow-900/30 text-yellow-400 text-sm px-3 py-1 rounded-full border border-yellow-500/30">
+                          Pending
+                        </span>
+                      )}
+                    </div>
+
+                    {project.presentationUrl ? (
+                      <a
+                        href={getFileUrl(project.presentationUrl)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block w-full mb-4 px-4 py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white rounded-lg font-medium transition-all hover:shadow-lg hover:shadow-blue-500/25 flex items-center justify-center gap-2"
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        Download Presentation
+                      </a>
+                    ) : (
+                      <div className="mb-4 p-3 bg-white/5 border border-white/10 rounded-lg text-center">
+                        <p className="text-white/60">No presentation uploaded</p>
+                      </div>
+                    )}
+                    
+                    {project.initialDefenseMarks?.supervisor !== null && project.initialDefenseMarks?.supervisor !== undefined ? (
+                      <div className="p-4 bg-gradient-to-r from-green-900/20 to-emerald-900/20 rounded-lg border border-green-500/30 text-center">
+                        <p className="text-green-300 font-bold text-lg">Marks Awarded</p>
+                        <p className="text-white text-3xl font-bold mt-1">{project.initialDefenseMarks.supervisor}/5</p>
+                        <p className="text-green-400/80 text-sm mt-2">✅ Evaluation Complete</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-sm font-medium text-white/80 mb-2">Marks (0-5)</label>
+                          <input 
+                            type="number" 
+                            id={`marks-${project._id}`} 
+                            min="0" max="5" step="0.5" 
+                            placeholder="Enter marks"
+                            className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/40 focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-white/80 mb-2">Feedback (Optional)</label>
+                          <textarea 
+                            id={`feedback-${project._id}`} 
+                            placeholder="Provide feedback..."
+                            className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/40 focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none"
+                            rows="2"
+                          ></textarea>
+                        </div>
+                        <button 
+                          onClick={() => handleInitialDefenseEvaluation(project._id)} 
+                          disabled={processing}
+                          className="w-full bg-gradient-to-r from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 text-white font-medium py-3 px-6 rounded-lg transition-all hover:shadow-lg hover:shadow-green-500/25 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                        >
+                          {processing ? (
+                            <>
+                              <svg className="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                              </svg>
+                              Submitting...
+                            </>
+                          ) : (
+                            'Submit Evaluation'
+                          )}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* 3. SRS/SDS REVIEW */}
+          {srsSdsReviewProjects.length > 0 && (
+            <section>
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-10 h-10 bg-gradient-to-br from-blue-900 to-blue-800 rounded-lg flex items-center justify-center">
+                  <span className="text-2xl">📋</span>
+                </div>
+                <div>
+                  <h2 className="text-2xl font-bold text-white">SRS/SDS Documentation Review</h2>
+                  <p className="text-sm text-white/60">Review technical documentation (5 marks)</p>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {srsSdsReviewProjects.map(project => (
+                  <div key={project._id} className="bg-gradient-to-br from-slate-800 to-slate-900 backdrop-blur-sm rounded-xl border border-white/10 p-6 hover:border-blue-500/30 transition-all">
+                    <div className="flex items-start justify-between mb-4">
+                      <div>
+                        <h3 className="font-bold text-lg text-white mb-1">{project.leaderId?.name}</h3>
+                        <p className="text-sm text-white/60">{project.leaderId?.enrollment}</p>
+                        <p className="text-sm text-white/80 mt-2">{project.projectTitle}</p>
+                      </div>
+                      <span className={`text-xs px-3 py-1 rounded-full border ${
+                        project.srsSdsStatus === 'Under Review' ? 'bg-purple-900/30 text-purple-400 border-purple-500/30' :
+                        project.srsSdsStatus === 'Pending Review' ? 'bg-yellow-900/30 text-yellow-400 border-yellow-500/30' :
+                        'bg-blue-900/30 text-blue-400 border-blue-500/30'
+                      }`}>
+                        {project.srsSdsStatus || 'Ready for Review'}
+                      </span>
+                    </div>
+
+                    {/* Document Links */}
+                    <div className="flex gap-4 mb-6">
+                      {project.srsUrl && (
+                        <a 
+                          href={getFileUrl(project.srsUrl)} 
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex-1 px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 rounded-lg text-white text-sm font-medium transition-all hover:shadow-lg hover:shadow-blue-500/25 flex items-center justify-center gap-2"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                          </svg>
+                          View SRS
+                        </a>
+                      )}
+                      {project.sdsUrl && (
+                        <a 
+                          href={getFileUrl(project.sdsUrl)} 
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex-1 px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 rounded-lg text-white text-sm font-medium transition-all hover:shadow-lg hover:shadow-blue-500/25 flex items-center justify-center gap-2"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                          </svg>
+                          View SDS
+                        </a>
+                      )}
+                    </div>
+                    
+                    {project.srsSdsStatus === 'Under Review' ? (
+                      project.srsSdsReviewMarks?.supervisor ? (
+                        <div className="p-4 bg-gradient-to-r from-green-900/20 to-emerald-900/20 rounded-lg border border-green-500/30 text-center">
+                          <p className="text-green-300 font-bold text-lg">Already Evaluated</p>
+                          <p className="text-white text-2xl font-bold mt-1">{project.srsSdsReviewMarks.supervisor}/5</p>
+                          <p className="text-green-400/80 text-sm mt-2">✅ Evaluation Complete</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-4 mt-4 pt-4 border-t border-white/10">
+                          <p className="text-sm font-bold text-blue-400">Evaluate Documents (5 marks)</p>
+                          <div>
+                            <label className="block text-sm font-medium text-white/80 mb-2">Marks (0-5)</label>
+                            <input 
+                              type="number" 
+                              id={`srs-sds-marks-${project._id}`} 
+                              placeholder="Enter marks (0-5)"
+                              className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/40"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-white/80 mb-2">Feedback</label>
+                            <textarea 
+                              id={`srs-sds-feedback-${project._id}`} 
+                              placeholder="Provide feedback..."
+                              className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/40"
+                              rows="2"
+                            ></textarea>
+                          </div>
+                          <button 
+                            onClick={() => handleSrsSdsEvaluation(project._id)}
+                            className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white font-medium py-2.5 px-4 rounded-lg transition-all hover:shadow-lg hover:shadow-blue-500/25"
+                          >
+                            Submit Evaluation
+                          </button>
+                        </div>
+                      )
+                    ) : (
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-sm font-medium text-white/80 mb-2">Review Feedback</label>
+                          <textarea 
+                            id={`feedback-${project._id}`} 
+                            placeholder="Provide detailed feedback..."
+                            className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/40"
+                            rows="3"
+                          ></textarea>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <button 
+                            onClick={() => handleSrsSdsDecision(project._id, 'Approved')}
+                            className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 text-white font-medium py-2.5 px-4 rounded-lg transition-all hover:shadow-lg hover:shadow-green-500/25"
+                          >
+                            Approve
+                          </button>
+                          <button 
+                            onClick={() => handleSrsSdsDecision(project._id, 'Changes Required')}
+                            className="bg-gradient-to-r from-yellow-600 to-yellow-700 hover:from-yellow-500 hover:to-yellow-600 text-white font-medium py-2.5 px-4 rounded-lg transition-all hover:shadow-lg hover:shadow-yellow-500/25"
+                          >
+                            Request Changes
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* 4. DEVELOPMENT PHASE */}
+          {developmentProjects.length > 0 && (
+            <section>
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-10 h-10 bg-gradient-to-br from-emerald-900 to-emerald-800 rounded-lg flex items-center justify-center">
+                  <span className="text-2xl">🛠️</span>
+                </div>
+                <div>
+                  <h2 className="text-2xl font-bold text-white">Development Phase Supervision</h2>
+                  <p className="text-sm text-white/60">Manage weekly meetings and progress logs</p>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-1 gap-6">
+                {developmentProjects.map(project => (
+                  <div key={project._id} className="bg-gradient-to-br from-slate-800 to-slate-900 backdrop-blur-sm rounded-xl border border-white/10 p-6 hover:border-emerald-500/30 transition-all">
+                    <div className="flex items-start justify-between mb-6">
+                      <div>
+                        <h3 className="font-bold text-xl text-white mb-1">{project.leaderId?.name}</h3>
+                        <p className="text-sm text-white/60">{project.leaderId?.enrollment}</p>
+                        <p className="text-sm text-white/80 mt-2">{project.projectTitle}</p>
+                      </div>
+                      <span className="bg-emerald-900/30 text-emerald-400 text-sm px-3 py-1 rounded-full border border-emerald-500/30">
+                        Active Development
+                      </span>
+                    </div>
+                    
+                    <div className="space-y-4">
+                      <h4 className="text-lg font-medium text-white flex items-center gap-2">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                        Weekly Meetings
+                      </h4>
+                      
+                      {project.weeklyLogs && project.weeklyLogs.length > 0 ? (
+                        <div className="space-y-3">
+                          {project.weeklyLogs.sort((a,b) => a.weekNumber - b.weekNumber).map(log => (
+                            <div key={log.weekNumber} className="bg-white/5 border border-white/10 rounded-lg p-4">
+                              <div className="flex items-start justify-between mb-3">
+                                <div className="flex items-center gap-3">
+                                  <span className="bg-blue-900/30 text-blue-400 px-3 py-1 rounded-full text-sm font-medium">
+                                    Week {log.weekNumber}
+                                  </span>
+                                  <span className="text-sm text-white/60">
+                                    {new Date(log.meetingDate).toLocaleDateString()}
+                                  </span>
                                 </div>
-                            )}
-                        </div>
-                    ))}
-                </div>
-            </section>
-        )}
-
-        {/* 4. PHASE 4: DEVELOPMENT (MEETINGS & LOGS) */}
-        {developmentProjects.length > 0 && (
-            <section>
-                <h2 className="text-2xl font-bold mb-4 flex items-center text-green-400"><span className="mr-2">🛠️</span> Development Phase (Weekly Logs)</h2>
-                <div className="grid grid-cols-1 gap-6">
-                    {developmentProjects.map(p => (
-                        <div key={p._id} className="bg-gray-800 p-6 rounded-lg border border-green-500/30">
-                            <div className="flex justify-between items-center mb-4">
-                                <h3 className="font-bold text-xl">{p.leaderId?.name}</h3>
-                                <span className="bg-green-900 text-green-300 px-3 py-1 rounded-full text-xs">Active Development</span>
-                            </div>
-                            
-                            <div className="space-y-3">
-                                {p.weeklyLogs && p.weeklyLogs.length > 0 ? (
-                                    p.weeklyLogs.sort((a,b)=>a.weekNumber-b.weekNumber).map(log => (
-                                    <div key={log.weekNumber} className="bg-gray-900 p-4 rounded border border-gray-700 flex justify-between items-start">
-                                        <div>
-                                            <span className="text-blue-400 font-bold text-sm">Week {log.weekNumber}</span>
-                                            <div className="text-xs text-gray-400 mt-1">Requested: {new Date(log.meetingDate).toDateString()}</div>
-                                            {log.content && <p className="text-sm text-gray-300 mt-2 border-l-2 border-green-500 pl-2">{log.content}</p>}
-                                        </div>
-                                        
-                                        <div className="flex flex-col gap-2">
-                                            {log.meetingStatus === 'Pending' && (
-                                                <button onClick={() => handleAcceptMeeting(p._id, log.weekNumber)} className="bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded text-xs font-bold">Accept Meeting</button>
-                                            )}
-                                            {log.meetingStatus === 'Accepted' && !log.content && activeLogId?.weekNumber !== log.weekNumber && (
-                                                <button onClick={() => setActiveLogId({ projectId: p._id, weekNumber: log.weekNumber })} className="bg-green-600 hover:bg-green-700 px-3 py-1 rounded text-xs font-bold">Write Log</button>
-                                            )}
-                                        </div>
+                                <span className={`text-xs px-2 py-1 rounded ${
+                                  log.meetingStatus === 'Accepted' ? 'bg-green-900/30 text-green-400 border border-green-500/30' :
+                                  log.meetingStatus === 'Pending' ? 'bg-yellow-900/30 text-yellow-400 border border-yellow-500/30' :
+                                  'bg-red-900/30 text-red-400 border border-red-500/30'
+                                }`}>
+                                  {log.meetingStatus}
+                                </span>
+                              </div>
+                              
+                              {log.content ? (
+                                <div className="mt-3 p-3 bg-white/5 border border-white/10 rounded">
+                                  <div className="flex items-center gap-2 mb-2">
+                                    <div className="w-6 h-6 bg-emerald-600 rounded-full flex items-center justify-center">
+                                      <span className="text-xs">📝</span>
                                     </div>
-                                ))
-                                ) : <p className="text-gray-500 italic">No meetings scheduled yet.</p>}
-                                
-                                {activeLogId && activeLogId.projectId === p._id && (
-                                    <div className="bg-gray-700 p-4 rounded border border-green-500 mt-2">
-                                        <h4 className="text-sm font-bold mb-2">Write Log for Week {activeLogId.weekNumber}</h4>
-                                        <textarea value={logContent} onChange={(e) => setLogContent(e.target.value)} className="w-full bg-gray-900 p-2 rounded text-white text-sm mb-2" rows="3" placeholder="Log details..."></textarea>
-                                        <div className="flex gap-2">
-                                            <button onClick={() => handleWriteLog(p._id, activeLogId.weekNumber)} className="bg-green-600 px-4 py-1 rounded text-sm font-bold">Save</button>
-                                            <button onClick={() => setActiveLogId(null)} className="bg-gray-500 px-4 py-1 rounded text-sm font-bold">Cancel</button>
-                                        </div>
-                                    </div>
+                                    <span className="text-sm font-medium text-emerald-400">Supervisor Log</span>
+                                  </div>
+                                  <p className="text-sm text-white/80">{log.content}</p>
+                                </div>
+                              ) : (
+                                <p className="text-white/50 italic text-sm">No log entry yet</p>
+                              )}
+                              
+                              <div className="mt-3 flex justify-end gap-2">
+                                {log.meetingStatus === 'Pending' && (
+                                  <button 
+                                    onClick={() => handleAcceptMeeting(project._id, log.weekNumber)}
+                                    className="px-3 py-1.5 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white text-sm font-medium rounded transition-all"
+                                  >
+                                    Accept Meeting
+                                  </button>
                                 )}
+                                {log.meetingStatus === 'Accepted' && !log.content && activeLogId?.weekNumber !== log.weekNumber && (
+                                  <button 
+                                    onClick={() => setActiveLogId({ projectId: project._id, weekNumber: log.weekNumber })}
+                                    className="px-3 py-1.5 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-white text-sm font-medium rounded transition-all"
+                                  >
+                                    Write Log
+                                  </button>
+                                )}
+                              </div>
                             </div>
+                          ))}
                         </div>
-                    ))}
-                </div>
+                      ) : (
+                        <div className="text-center py-6 border border-white/10 rounded-lg">
+                          <p className="text-white/80">No meetings scheduled yet</p>
+                          <p className="text-sm text-white/60 mt-1">Student will schedule weekly meetings</p>
+                        </div>
+                      )}
+                      
+                      {/* Log Writing Section */}
+                      {activeLogId && activeLogId.projectId === project._id && (
+                        <div className="mt-4 p-4 bg-white/5 border border-white/10 rounded-lg">
+                          <h4 className="text-lg font-medium text-white mb-3">Write Log for Week {activeLogId.weekNumber}</h4>
+                          <textarea 
+                            value={logContent} 
+                            onChange={(e) => setLogContent(e.target.value)} 
+                            className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/40 mb-3"
+                            rows="4" 
+                            placeholder="Enter meeting notes, progress updates, and action items..."
+                          ></textarea>
+                          <div className="flex gap-3">
+                            <button 
+                              onClick={() => handleWriteLog(project._id, activeLogId.weekNumber)}
+                              className="flex-1 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-white font-medium py-2.5 px-4 rounded-lg transition-all hover:shadow-lg hover:shadow-emerald-500/25"
+                            >
+                              Save Log
+                            </button>
+                            <button 
+                              onClick={() => setActiveLogId(null)}
+                              className="flex-1 bg-white/10 hover:bg-white/20 border border-white/20 text-white font-medium py-2.5 px-4 rounded-lg transition-all"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
             </section>
-        )}
+          )}
 
-        {/* 5. PHASE 5: FINAL DEFENSE */}
-        {finalDefenseProjects.length > 0 && (
+          {/* 5. FINAL DEFENSE */}
+          {finalDefenseProjects.length > 0 && (
             <section>
-                <h2 className="text-2xl font-bold mb-4 flex items-center text-red-400"><span className="mr-2">🎓</span> Final Defense Evaluation</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {finalDefenseProjects.map(p => (
-                        <div key={p._id} className="bg-gray-800 p-6 rounded-lg border border-red-500/50">
-                            <h3 className="font-bold text-lg mb-1">{p.leaderId?.name}</h3>
-                            <p className="text-xs text-gray-400 mb-4">Date: {p.finalDefense?.scheduledDate ? new Date(p.finalDefense.scheduledDate).toDateString() : 'TBA'}</p>
-                            
-                            {p.finalDefense?.finalPptUrl ? (
-                                <a href={getFileUrl(p.finalDefense.finalPptUrl)} target="_blank" className="block mb-4 text-blue-400 text-sm underline">📥 Download Final PPT</a>
-                            ) : (
-                                <p className="text-xs text-yellow-500 mb-4">PPT not uploaded yet</p>
-                            )}
-
-                            <div className="mt-4 pt-4 border-t border-gray-700">
-                                <label className="text-sm font-bold block mb-1">Supervisor Marks (30%)</label>
-                                <div className="flex gap-2">
-                                    <input 
-                                        type="number" 
-                                        id={`final-mark-${p._id}`}
-                                        defaultValue={p.finalDefense?.marks?.supervisor || ''}
-                                        disabled={p.finalDefense?.marks?.supervisor}
-                                        className="bg-gray-900 border border-gray-600 p-2 rounded w-24 text-white" 
-                                        placeholder="0-30"
-                                    />
-                                    {!p.finalDefense?.marks?.supervisor ? (
-                                        <button onClick={() => handleSubmitFinalMark(p._id)} className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded text-sm font-bold">Submit</button>
-                                    ) : <span className="text-green-500 font-bold flex items-center">✅ Submitted</span>}
-                                </div>
-                            </div>
-                        </div>
-                    ))}
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-10 h-10 bg-gradient-to-br from-red-900 to-red-800 rounded-lg flex items-center justify-center">
+                  <span className="text-2xl">🎓</span>
                 </div>
+                <div>
+                  <h2 className="text-2xl font-bold text-white">Final Defense Evaluation</h2>
+                  <p className="text-sm text-white/60">Submit final marks (30 marks)</p>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {finalDefenseProjects.map(project => (
+                  <div key={project._id} className="bg-gradient-to-br from-slate-800 to-slate-900 backdrop-blur-sm rounded-xl border border-white/10 p-6 hover:border-red-500/30 transition-all">
+                    <div className="flex items-start justify-between mb-4">
+                      <div>
+                        <h3 className="font-bold text-lg text-white mb-1">{project.leaderId?.name}</h3>
+                        <p className="text-sm text-white/60">{project.leaderId?.enrollment}</p>
+                        <p className="text-sm text-white/80 mt-2">{project.projectTitle}</p>
+                      </div>
+                      {project.finalDefense?.scheduledDate && (
+                        <div className="text-right">
+                          <p className="text-xs text-white/60">Defense Date</p>
+                          <p className="text-sm text-white font-medium">
+                            {new Date(project.finalDefense.scheduledDate).toLocaleDateString()}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Final PPT */}
+                    <div className="mb-6">
+                      {project.finalDefense?.finalPptUrl ? (
+                        <a 
+                          href={getFileUrl(project.finalDefense.finalPptUrl)} 
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="block w-full px-4 py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white rounded-lg font-medium transition-all hover:shadow-lg hover:shadow-blue-500/25 flex items-center justify-center gap-2"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                          </svg>
+                          Download Final Presentation
+                        </a>
+                      ) : (
+                        <div className="p-3 bg-white/5 border border-white/10 rounded-lg text-center">
+                          <p className="text-white/60">Final presentation not uploaded yet</p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Marks Submission */}
+                    <div className="pt-4 border-t border-white/10">
+                      <label className="block text-lg font-medium text-white mb-3">Supervisor Evaluation (30 marks)</label>
+                      
+                      {project.finalDefense?.marks?.supervisor ? (
+                        <div className="p-4 bg-gradient-to-r from-green-900/20 to-emerald-900/20 rounded-lg border border-green-500/30 text-center">
+                          <p className="text-green-300 font-bold text-lg">Marks Submitted</p>
+                          <p className="text-white text-3xl font-bold mt-1">{project.finalDefense.marks.supervisor}/30</p>
+                          <p className="text-green-400/80 text-sm mt-2">✅ Evaluation Complete</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-4">
+                          <div>
+                            <label className="block text-sm font-medium text-white/80 mb-2">Enter Marks (0-30)</label>
+                            <input 
+                              type="number" 
+                              id={`final-mark-${project._id}`}
+                              min="0" max="30" 
+                              placeholder="Enter marks"
+                              className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/40 focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none"
+                            />
+                          </div>
+                          <button 
+                            onClick={() => handleSubmitFinalMark(project._id)}
+                            className="w-full bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white font-medium py-3 px-6 rounded-lg transition-all hover:shadow-lg hover:shadow-red-500/25 flex items-center justify-center gap-2"
+                          >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            </svg>
+                            Submit Final Marks
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
             </section>
-        )}
+          )}
 
-        {/* Empty State */}
-        {pendingConsents.length === 0 && initialDefenseProjects.length === 0 && srsSdsReviewProjects.length === 0 && developmentProjects.length === 0 && finalDefenseProjects.length === 0 && (
-            <div className="text-center py-20 text-gray-500">
-                <h3 className="text-xl">No active tasks found.</h3>
+          {/* Empty State */}
+          {pendingConsents.length === 0 && initialDefenseProjects.length === 0 && 
+           srsSdsReviewProjects.length === 0 && developmentProjects.length === 0 && 
+           finalDefenseProjects.length === 0 && (
+            <div className="text-center py-16">
+              <div className="text-6xl mb-6">📭</div>
+              <h3 className="text-xl font-bold text-white mb-2">No Active Tasks</h3>
+              <p className="text-white/60">You're all caught up! No pending evaluations or reviews.</p>
             </div>
-        )}
-
-      </div>
+          )}
+        </div>
+      </main>
 
       {/* CONSENT FORM MODAL */}
       {selectedProject && (
-          <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50">
-            <div className="bg-gray-800 rounded-lg shadow-2xl max-w-2xl w-full p-6 border border-gray-700">
-                <h2 className="text-2xl font-bold text-white mb-4">Approve Project</h2>
-                <p className="text-gray-300 mb-4">Student: {selectedProject.leaderId?.name}</p>
-                <input type="text" value={signatureName} onChange={e=>setSignatureName(e.target.value)} className="w-full p-3 bg-gray-900 border border-gray-600 rounded text-white mb-4" placeholder="Digital Signature (Your Name)" />
-                <div className="flex items-center mb-6">
-                    <input type="checkbox" checked={agreedToTerms} onChange={e=>setAgreedToTerms(e.target.checked)} className="mr-2"/>
-                    <label className="text-sm text-gray-300">I agree to supervise this project.</label>
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-50 p-4">
+          <div className="bg-gradient-to-b from-slate-800 to-slate-900 border border-white/10 rounded-xl w-full max-w-2xl p-6 shadow-2xl relative">
+            {/* Close Button */}
+            <button 
+              onClick={() => setSelectedProject(null)}
+              className="absolute top-4 right-4 text-white/70 hover:text-white transition-colors bg-white/10 hover:bg-white/20 w-8 h-8 rounded-full flex items-center justify-center"
+            >
+              ✕
+            </button>
+
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-12 h-12 bg-gradient-to-br from-yellow-900 to-yellow-800 rounded-lg flex items-center justify-center">
+                <span className="text-2xl">📝</span>
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-white">Review Project Proposal</h2>
+                <p className="text-sm text-white/60">Provide consent for project supervision</p>
+              </div>
+            </div>
+
+            {/* Student Info */}
+            <div className="mb-6 p-4 bg-white/5 border border-white/10 rounded-lg">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm text-white/60">Student Name</p>
+                  <p className="text-white font-medium">{selectedProject.leaderId?.name}</p>
                 </div>
-                <div className="flex gap-4">
-                    <button onClick={() => handleDecision(selectedProject._id, 'Approved')} disabled={processing} className="flex-1 bg-green-600 py-3 rounded font-bold text-white">Approve</button>
-                    <button onClick={() => setSelectedProject(null)} className="flex-1 bg-gray-700 py-3 rounded font-bold text-white">Cancel</button>
+                <div>
+                  <p className="text-sm text-white/60">Enrollment</p>
+                  <p className="text-white font-medium">{selectedProject.leaderId?.enrollment}</p>
                 </div>
+                <div className="col-span-2">
+                  <p className="text-sm text-white/60">Project Title</p>
+                  <p className="text-white font-medium">{selectedProject.projectTitle}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Form */}
+            <div className="space-y-6">
+              <div>
+                <label className="block text-sm font-medium text-white/80 mb-2">Digital Signature</label>
+                <input 
+                  type="text" 
+                  value={signatureName} 
+                  onChange={e => setSignatureName(e.target.value)}
+                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/40 focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 outline-none"
+                  placeholder="Enter your full name"
+                />
+                <p className="text-xs text-white/50 mt-1">This will serve as your digital signature</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-white/80 mb-2">Feedback (Optional)</label>
+                <textarea 
+                  value={feedback} 
+                  onChange={e => setFeedback(e.target.value)}
+                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/40 focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 outline-none"
+                  rows="3"
+                  placeholder="Add any comments or feedback..."
+                ></textarea>
+              </div>
+
+              <div className="flex items-start gap-3 p-4 bg-white/5 border border-white/10 rounded-lg">
+                <input 
+                  type="checkbox" 
+                  checked={agreedToTerms} 
+                  onChange={e => setAgreedToTerms(e.target.checked)}
+                  className="mt-1"
+                  id="consent-checkbox"
+                />
+                <label htmlFor="consent-checkbox" className="text-sm text-white/80">
+                  I agree to supervise this project and provide guidance throughout the FYP process. 
+                  I understand my responsibilities as a supervisor and commit to regular meetings and evaluations.
+                </label>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <button 
+                  onClick={() => handleDecision(selectedProject._id, 'Approved')}
+                  disabled={processing || !signatureName.trim() || !agreedToTerms}
+                  className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 text-white font-medium py-3 px-6 rounded-lg transition-all hover:shadow-lg hover:shadow-green-500/25 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {processing ? (
+                    <>
+                      <svg className="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Processing...
+                    </>
+                  ) : (
+                    'Approve & Sign'
+                  )}
+                </button>
+                <button 
+                  onClick={() => setSelectedProject(null)}
+                  className="bg-white/10 hover:bg-white/20 border border-white/20 text-white font-medium py-3 px-6 rounded-lg transition-all"
+                >
+                  Cancel
+                </button>
+              </div>
             </div>
           </div>
+        </div>
       )}
     </div>
   );
 };
+
+// Summary Card Component
+const SummaryCard = ({ title, count, color, borderColor, icon }) => (
+  <div className={`${color} border ${borderColor} backdrop-blur-sm rounded-xl p-6 hover:scale-105 transition-all duration-300 hover:shadow-lg`}>
+    <div className="flex items-center justify-between">
+      <div>
+        <p className="text-sm text-white/60 mb-1">{title}</p>
+        <p className="text-3xl font-bold text-white">{count}</p>
+      </div>
+      <div className="text-3xl">{icon}</div>
+    </div>
+    <div className="mt-4 pt-4 border-t border-white/10">
+      <p className="text-xs text-white/40">Pending actions</p>
+    </div>
+  </div>
+);
 
 export default SupervisorDashboard;

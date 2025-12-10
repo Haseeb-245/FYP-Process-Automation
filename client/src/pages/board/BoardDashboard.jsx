@@ -1,297 +1,118 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+
+
 
 const BoardDashboard = () => {
-  const [activeTab, setActiveTab] = useState('initial-defense'); // 'initial-defense', 'srs-sds-evaluation'
+  const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState('initial-defense');
   const [initialDefenseProjects, setInitialDefenseProjects] = useState([]);
   const [srsSdsProjects, setSrsSdsProjects] = useState([]);
+  const [finalDefenseProjects, setFinalDefenseProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedProject, setSelectedProject] = useState(null);
   const [feedback, setFeedback] = useState('');
   const [marks, setMarks] = useState('');
   const [processing, setProcessing] = useState(false);
-  const [debugInfo, setDebugInfo] = useState('');
 
   useEffect(() => {
+    // Check authentication
+    const userInfo = JSON.parse(localStorage.getItem('userInfo'));
+    if (!userInfo || userInfo.role !== 'board') {
+      navigate('/');
+      alert('Please login as Panel Member first');
+      return;
+    }
+    
     fetchData();
-  }, []);
+  }, [navigate]);
 
   const fetchData = async () => {
     try {
       setLoading(true);
-      setDebugInfo('Fetching data from backend...');
-      console.log('Fetching data from backend...');
       
-      // Fetch both initial defense and SRS/SDS projects in parallel
-      const [initialResponse, srsSdsResponse] = await Promise.all([
+      const [initialRes, srsSdsRes, finalRes] = await Promise.all([
         fetch('http://localhost:5000/api/projects/initial-defense-projects'),
-        fetch('http://localhost:5000/api/projects/srs-sds-evaluation-projects')
+        fetch('http://localhost:5000/api/projects/srs-sds-evaluation-projects'),
+        fetch('http://localhost:5000/api/projects/evaluation-list/final')
       ]);
 
-      console.log('Initial Defense Response Status:', initialResponse.status);
-      console.log('SRS/SDS Response Status:', srsSdsResponse.status);
+      if (initialRes.ok) setInitialDefenseProjects(await initialRes.json());
+      if (srsSdsRes.ok) setSrsSdsProjects(await srsSdsRes.json());
+      if (finalRes.ok) setFinalDefenseProjects(await finalRes.json());
 
-      if (!initialResponse.ok) {
-        const errorText = await initialResponse.text();
-        console.error('Initial Defense API Error:', errorText);
-        setDebugInfo(`Initial Defense API Error: ${initialResponse.status} - ${errorText}`);
-        throw new Error(`Failed to fetch initial defense projects: ${initialResponse.status} ${initialResponse.statusText}`);
-      }
-      
-      if (!srsSdsResponse.ok) {
-        const errorText = await srsSdsResponse.text();
-        console.error('SRS/SDS API Error:', errorText);
-        setDebugInfo(`SRS/SDS API Error: ${srsSdsResponse.status} - ${errorText}`);
-        throw new Error(`Failed to fetch SRS/SDS projects: ${srsSdsResponse.status} ${srsSdsResponse.statusText}`);
-      }
-
-      const initialData = await initialResponse.json();
-      const srsSdsData = await srsSdsResponse.json();
-
-      console.log('Initial Defense Projects Data:', initialData);
-      console.log('SRS/SDS Projects Data:', srsSdsData);
-      
-      console.log('Number of Initial Defense Projects:', initialData.length);
-      console.log('Number of SRS/SDS Projects:', srsSdsData.length);
-      
-      // Log first project structure for debugging
-      if (initialData.length > 0) {
-        console.log('Sample Initial Defense Project:', {
-          id: initialData[0]._id,
-          studentName: initialData[0].leaderId?.name,
-          status: initialData[0].status,
-          initialDefenseMarks: initialData[0].initialDefenseMarks,
-          presentationUrl: initialData[0].presentationUrl,
-          initialDefenseCompleted: initialData[0].initialDefenseCompleted
-        });
-      } else {
-        console.log('No initial defense projects found');
-      }
-      
-      if (srsSdsData.length > 0) {
-        console.log('Sample SRS/SDS Project:', {
-          id: srsSdsData[0]._id,
-          studentName: srsSdsData[0].leaderId?.name,
-          srsSdsStatus: srsSdsData[0].srsSdsStatus,
-          srsSdsReviewMarks: srsSdsData[0].srsSdsReviewMarks,
-          srsUrl: srsSdsData[0].srsUrl,
-          sdsUrl: srsSdsData[0].sdsUrl,
-          srsSdsReviewCompleted: srsSdsData[0].srsSdsReviewCompleted
-        });
-      } else {
-        console.log('No SRS/SDS projects found');
-      }
-
-      setInitialDefenseProjects(initialData);
-      setSrsSdsProjects(srsSdsData);
-      setDebugInfo(`Loaded ${initialData.length} initial defense projects and ${srsSdsData.length} SRS/SDS projects`);
     } catch (error) {
       console.error('Error fetching projects:', error);
-      console.error('Error details:', error.message, error.stack);
-      setDebugInfo(`Error: ${error.message}`);
-      alert(`Failed to fetch projects: ${error.message}\n\nPlease check if backend is running and try refreshing.`);
     } finally {
       setLoading(false);
     }
   };
 
-  const testBackendEndpoints = async () => {
-    try {
-      setDebugInfo('Testing backend endpoints...');
-      console.log('Testing backend endpoints...');
-      
-      // Test initial defense endpoint
-      console.log('Testing /api/projects/initial-defense-projects');
-      const initialTest = await fetch('http://localhost:5000/api/projects/initial-defense-projects');
-      console.log('Initial Defense Test Status:', initialTest.status);
-      if (initialTest.ok) {
-        const data = await initialTest.json();
-        console.log('Initial Defense Test Data:', data);
-        setDebugInfo(prev => prev + `\nInitial Defense OK: ${data.length} projects`);
-      } else {
-        const error = await initialTest.text();
-        console.error('Initial Defense Test Error:', error);
-        setDebugInfo(prev => prev + `\nInitial Defense Error: ${initialTest.status} - ${error}`);
-      }
-      
-      // Test SRS/SDS endpoint
-      console.log('Testing /api/projects/srs-sds-evaluation-projects');
-      const srsSdsTest = await fetch('http://localhost:5000/api/projects/srs-sds-evaluation-projects');
-      console.log('SRS/SDS Test Status:', srsSdsTest.status);
-      if (srsSdsTest.ok) {
-        const data = await srsSdsTest.json();
-        console.log('SRS/SDS Test Data:', data);
-        setDebugInfo(prev => prev + `\nSRS/SDS OK: ${data.length} projects`);
-      } else {
-        const error = await srsSdsTest.text();
-        console.error('SRS/SDS Test Error:', error);
-        setDebugInfo(prev => prev + `\nSRS/SDS Error: ${srsSdsTest.status} - ${error}`);
-      }
-      
-      // Test submit endpoint
-      console.log('Testing submit endpoint with dummy data');
-      const testSubmit = await fetch('http://localhost:5000/api/projects/submit-srs-sds-marks/test-id', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ role: 'panel', marks: 4 })
-      });
-      console.log('Submit Test Status:', testSubmit.status);
-      setDebugInfo(prev => prev + `\nSubmit Test Status: ${testSubmit.status}`);
-      
-    } catch (error) {
-      console.error('Backend test error:', error);
-      setDebugInfo(prev => prev + `\nTest Error: ${error.message}`);
-    }
+  const handleLogout = () => {
+    localStorage.removeItem('userInfo');
+    navigate('/');
   };
 
-  // ============================
-  // INITIAL DEFENSE EVALUATION
-  // ============================
+  const getFileUrl = (path) => {
+    if (!path) return '#';
+    const cleanPath = path.replace(/\\/g, '/');
+    return `http://localhost:5000/${cleanPath}`;
+  };
 
+  // --- SUBMIT HANDLERS ---
   const handleSubmitInitialDefenseEvaluation = async (status) => {
     if (!selectedProject) return;
-
-    if (status === 'Defense Cleared') {
-      if (!marks || marks < 0 || marks > 5) {
-        alert('Please enter valid marks between 0 and 5');
-        return;
-      }
-    }
-
-    if (status === 'Defense Changes Required' && !feedback.trim()) {
-      alert('Please provide feedback when requesting changes');
-      return;
-    }
-
+    if (status === 'Defense Cleared' && (!marks || marks < 0 || marks > 5)) return alert('Enter valid marks (0-5)');
+    
     try {
       setProcessing(true);
-      setDebugInfo('Submitting initial defense evaluation...');
-      
-      const submitData = { 
-        role: 'panel',
-        feedback: feedback || undefined
-      };
-      
-      if (status === 'Defense Cleared') {
-        submitData.marks = parseFloat(marks);
-      }
-      
-      console.log('Submitting initial defense evaluation:', {
-        projectId: selectedProject._id,
-        status,
-        data: submitData
-      });
-      
-      const response = await fetch(`http://localhost:5000/api/projects/submit-initial-defense-marks/${selectedProject._id}`, {
+      const submitData = { role: 'panel', feedback: feedback || undefined, marks: parseFloat(marks) };
+      const res = await fetch(`http://localhost:5000/api/projects/submit-initial-defense-marks/${selectedProject._id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(submitData),
       });
-
-      console.log('Submission Response Status:', response.status);
-      
-      if (response.ok) {
-        const data = await response.json();
-        console.log('Submission Success:', data);
-        
-        if (status === 'Defense Cleared') {
-          alert('✅ Initial Defense Marks Submitted Successfully!');
-          if (data.allMarksGiven) {
-            alert('🎉 All evaluations received! Project moved to next phase.');
-          }
-        } else {
-          alert('⚠️ Changes Requested. Student will resubmit.');
-        }
-        setDebugInfo('Evaluation submitted successfully');
+      if (res.ok) {
+        alert('✅ Initial Defense Submitted!');
         resetForm();
         fetchData();
-      } else {
-        const errorData = await response.json();
-        console.error('Submission Error:', errorData);
-        setDebugInfo(`Submission failed: ${errorData.message || response.statusText}`);
-        alert(errorData.message || `Failed to submit marks: ${response.status} ${response.statusText}`);
       }
-    } catch (error) {
-      console.error('Error submitting evaluation:', error);
-      setDebugInfo(`Network error: ${error.message}`);
-      alert('Server error - check console for details');
-    } finally {
-      setProcessing(false);
-    }
+    } catch (error) { console.error(error); } finally { setProcessing(false); }
   };
-
-  // ============================
-  // SRS/SDS EVALUATION
-  // ============================
 
   const handleSubmitSrsSdsEvaluation = async () => {
-    if (!selectedProject) return;
-
-    if (!marks || marks < 0 || marks > 5) {
-      alert('Please enter valid marks between 0 and 5');
-      return;
-    }
-
+    if (!marks || marks < 0 || marks > 5) return alert('Enter valid marks (0-5)');
     try {
       setProcessing(true);
-      setDebugInfo('Submitting SRS/SDS evaluation...');
-      
-      const submitData = { 
-        role: 'panel',
-        marks: parseFloat(marks),
-        feedback: feedback || undefined
-      };
-      
-      console.log('Submitting SRS/SDS evaluation:', {
-        projectId: selectedProject._id,
-        data: submitData
-      });
-      
-      const response = await fetch(`http://localhost:5000/api/projects/submit-srs-sds-marks/${selectedProject._id}`, {
+      const res = await fetch(`http://localhost:5000/api/projects/submit-srs-sds-marks/${selectedProject._id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(submitData),
+        body: JSON.stringify({ role: 'panel', marks: parseFloat(marks), feedback }),
       });
-
-      console.log('SRS/SDS Submission Response Status:', response.status);
-      
-      if (response.ok) {
-        const data = await response.json();
-        console.log('SRS/SDS Submission Success:', data);
-        
-        alert('✅ SRS/SDS Evaluation Submitted Successfully!');
-        
-        if (data.allMarksGiven) {
-          alert('🎉 All SRS/SDS evaluations received! Project moved to Development Phase.');
-        }
-        
-        setDebugInfo('SRS/SDS evaluation submitted successfully');
+      if (res.ok) {
+        alert('✅ SRS/SDS Evaluation Submitted!');
         resetForm();
         fetchData();
-      } else {
-        const errorText = await response.text();
-        console.error('SRS/SDS Submission Error:', errorText);
-        setDebugInfo(`SRS/SDS submission failed: ${response.status} - ${errorText}`);
-        
-        try {
-          const errorData = JSON.parse(errorText);
-          alert(errorData.message || `Failed to submit SRS/SDS evaluation: ${response.status}`);
-        } catch {
-          alert(`Failed to submit SRS/SDS evaluation: ${response.status} ${response.statusText}`);
-        }
       }
-    } catch (error) {
-      console.error('Error submitting SRS/SDS evaluation:', error);
-      console.error('Error stack:', error.stack);
-      setDebugInfo(`Network error: ${error.message}`);
-      alert(`Server error: ${error.message}\n\nCheck browser console for details.`);
-    } finally {
-      setProcessing(false);
-    }
+    } catch (error) { console.error(error); } finally { setProcessing(false); }
   };
 
-  // ============================
-  // HELPER FUNCTIONS
-  // ============================
+  const handleSubmitFinalDefenseEvaluation = async () => {
+      if (!marks || marks < 0 || marks > 30) return alert('Enter valid marks (0-30)');
+      try {
+          setProcessing(true);
+          const res = await fetch(`http://localhost:5000/api/projects/submit-final-marks/${selectedProject._id}`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ role: 'panel', marks: parseFloat(marks) })
+          });
+          if(res.ok) {
+              alert('✅ Final Defense Grade Submitted!');
+              resetForm();
+              fetchData();
+          }
+      } catch (error) { console.error(error); } finally { setProcessing(false); }
+  };
 
   const resetForm = () => {
     setFeedback("");
@@ -299,569 +120,482 @@ const BoardDashboard = () => {
     setSelectedProject(null);
   };
 
-  // Function to check if panel has already evaluated INITIAL defense
-  const hasPanelEvaluatedInitialDefense = (project) => {
-    return project.initialDefenseMarks && 
-           project.initialDefenseMarks.panel !== undefined && 
-           project.initialDefenseMarks.panel !== null;
-  };
-
-  // Function to check if panel has already evaluated SRS/SDS
-  const hasPanelEvaluatedSrsSds = (project) => {
-    return project.srsSdsReviewMarks && 
-           project.srsSdsReviewMarks.panel !== undefined && 
-           project.srsSdsReviewMarks.panel !== null;
-  };
-
-  // Calculate total initial defense marks
-  const calculateInitialDefenseMarks = (project) => {
-    const marks = project.initialDefenseMarks || {};
-    const total = (marks.coordinator || 0) + 
-                  (marks.supervisor || 0) + 
-                  (marks.panel || 0);
-    const percentage = (total / 15 * 100).toFixed(1);
-    return { total, percentage };
-  };
-
-  // Calculate total SRS/SDS marks
-  const calculateSrsSdsMarks = (project) => {
-    const marks = project.srsSdsReviewMarks || {};
-    const total = (marks.coordinator || 0) + 
-                  (marks.supervisor || 0) + 
-                  (marks.panel || 0);
-    const percentage = (total / 15 * 100).toFixed(1);
-    return { total, percentage };
-  };
-
-  // Render Initial Defense Project Card
+  // --- RENDER HELPERS ---
   const renderInitialDefenseCard = (project) => {
-    const isEvaluated = hasPanelEvaluatedInitialDefense(project);
-    const panelMarks = isEvaluated ? project.initialDefenseMarks.panel : null;
-    const totalMarks = calculateInitialDefenseMarks(project);
-    const initialMarks = project.initialDefenseMarks || {};
-    
+    const isEvaluated = project.initialDefenseMarks?.panel !== null && project.initialDefenseMarks?.panel !== undefined;
     return (
-      <div key={project._id} className="bg-gray-800/50 backdrop-blur-lg rounded-2xl p-6 border border-gray-700 shadow-xl hover:border-red-500/50 transition-all">
-        
-        {/* Student Info */}
-        <div className="mb-4">
-          <h2 className="text-xl font-bold text-white">{project.leaderId?.name}</h2>
-          <p className="text-sm text-gray-400">{project.leaderId?.enrollment}</p>
-          <div className={`mt-2 inline-block px-3 py-1 rounded-full text-xs font-bold ${
-            project.status === 'Scheduled for Defense' ? 'bg-yellow-500/20 text-yellow-300 border border-yellow-500/30' : 
-            project.status === 'Defense Changes Required' ? 'bg-orange-500/20 text-orange-300 border border-orange-500/30' :
-            project.status === 'Defense Cleared' ? 'bg-green-500/20 text-green-300 border border-green-500/30' :
-            'bg-gray-500/20 text-gray-300 border border-gray-500/30'
-          }`}>
-            {project.status}
+      <div key={project._id} className="bg-gradient-to-br from-slate-800 to-slate-900 backdrop-blur-sm rounded-xl border border-white/10 p-6 hover:border-red-500/30 transition-all hover:shadow-lg">
+        <div className="flex items-start justify-between mb-4">
+          <div>
+            <h2 className="text-xl font-bold text-white mb-1">{project.leaderId?.name}</h2>
+            <p className="text-sm text-white/60">{project.leaderId?.enrollment}</p>
+            <p className="text-sm text-white/80 mt-2 truncate">{project.projectTitle}</p>
           </div>
-        </div>
-
-        {/* Defense Details */}
-        <div className="mb-6 space-y-3">
-          <p className="text-sm text-gray-300">
-            📅 <span className="font-semibold">Scheduled:</span> {project.defenseDate ? new Date(project.defenseDate).toLocaleDateString() : 'Not set'}
-          </p>
-          
-          {/* Marks Status */}
-          <div className="bg-gray-900/50 p-3 rounded-lg">
-            <p className="text-sm font-semibold text-gray-400 mb-2">Initial Defense Marks Status:</p>
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-300">Coordinator:</span>
-                <span className={`px-2 py-1 rounded text-xs font-bold ${
-                  initialMarks.coordinator !== null ? 'bg-green-500/20 text-green-300' : 'bg-yellow-500/20 text-yellow-300'
-                }`}>
-                  {initialMarks.coordinator !== null ? `${initialMarks.coordinator}/5` : 'Pending'}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-300">Supervisor:</span>
-                <span className={`px-2 py-1 rounded text-xs font-bold ${
-                  initialMarks.supervisor !== null ? 'bg-green-500/20 text-green-300' : 'bg-yellow-500/20 text-yellow-300'
-                }`}>
-                  {initialMarks.supervisor !== null ? `${initialMarks.supervisor}/5` : 'Pending'}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-300">Your Marks:</span>
-                <span className={`px-2 py-1 rounded text-xs font-bold ${
-                  isEvaluated ? 'bg-green-500/20 text-green-300' : 'bg-yellow-500/20 text-yellow-300'
-                }`}>
-                  {isEvaluated ? `${panelMarks}/5` : 'Pending'}
-                </span>
-              </div>
-              {isEvaluated && (
-                <div className="pt-2 border-t border-gray-700">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-300">Total:</span>
-                    <span className="text-white font-bold text-sm">
-                      {totalMarks.total}/15 ({totalMarks.percentage}%)
-                    </span>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* PPT Download Button */}
-          {project.presentationUrl ? (
-            <a 
-              href={`http://localhost:5000/${project.presentationUrl}`} 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="block w-full text-center py-2.5 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 rounded-lg text-sm font-semibold transition-all"
-            >
-              📥 Download Presentation (PPT)
-            </a>
+          {isEvaluated ? (
+            <span className="bg-green-900/30 text-green-400 text-xs px-3 py-1 rounded-full border border-green-500/30">
+              ✅ Evaluated
+            </span>
           ) : (
-            <div className="text-center py-2.5 bg-gray-700 rounded-lg text-sm text-gray-400 italic">
-              No PPT Uploaded
-            </div>
+            <span className="bg-yellow-900/30 text-yellow-400 text-xs px-3 py-1 rounded-full border border-yellow-500/30">
+              Pending
+            </span>
           )}
         </div>
-
-        {/* Action Button */}
+        
+        {project.presentationUrl ? (
+          <a 
+            href={getFileUrl(project.presentationUrl)} 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="block w-full mb-4 px-4 py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white rounded-lg font-medium transition-all hover:shadow-lg hover:shadow-blue-500/25 flex items-center justify-center gap-2"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            Download Presentation
+          </a>
+        ) : (
+          <div className="mb-4 p-3 bg-white/5 border border-white/10 rounded-lg text-center">
+            <p className="text-white/60">No presentation uploaded</p>
+          </div>
+        )}
+        
         <button 
           onClick={() => { 
             setSelectedProject({...project, evaluationType: 'initial-defense'}); 
-            setFeedback(""); 
-            setMarks(isEvaluated ? panelMarks.toString() : ''); 
+            setMarks(isEvaluated ? project.initialDefenseMarks.panel : ''); 
           }}
-          disabled={isEvaluated || project.initialDefenseCompleted}
-          className={`w-full py-3 rounded-lg font-bold transition-all ${
-            isEvaluated || project.initialDefenseCompleted ? 
-            'bg-gray-700 text-gray-400 cursor-not-allowed' : 
-            'bg-gradient-to-r from-red-500 to-orange-600 hover:from-red-600 hover:to-orange-700'
-          }`}
+          disabled={isEvaluated}
+          className={`w-full py-3 rounded-lg font-medium transition-all ${
+            isEvaluated 
+              ? 'bg-gradient-to-r from-green-600 to-green-700 text-white' 
+              : 'bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white hover:shadow-lg hover:shadow-red-500/25'
+          } flex items-center justify-center gap-2`}
         >
-          {isEvaluated ? '✅ Already Evaluated' : 
-           project.initialDefenseCompleted ? '✅ All Evaluations Complete' : 
-           '📝 Evaluate Initial Defense'}
+          {isEvaluated ? (
+            <>
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+              Graded: {project.initialDefenseMarks.panel}/5
+            </>
+          ) : (
+            <>
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Grade Initial Defense (5%)
+            </>
+          )}
         </button>
-        
-        {/* Show previous feedback if evaluated */}
-        {isEvaluated && project.initialDefenseMarks?.feedback && (
-          <div className="mt-3 p-3 bg-gray-900/50 rounded-lg">
-            <p className="text-xs text-gray-400 mb-1">Your feedback:</p>
-            <p className="text-sm text-gray-300">{project.initialDefenseMarks.feedback}</p>
-          </div>
-        )}
       </div>
     );
   };
 
-  // Render SRS/SDS Project Card
   const renderSrsSdsCard = (project) => {
-    const isEvaluated = hasPanelEvaluatedSrsSds(project);
-    const panelMarks = isEvaluated ? project.srsSdsReviewMarks.panel : null;
-    const totalMarks = calculateSrsSdsMarks(project);
-    const srsSdsMarks = project.srsSdsReviewMarks || {};
-    
+    const isEvaluated = project.srsSdsReviewMarks?.panel !== null && project.srsSdsReviewMarks?.panel !== undefined;
     return (
-      <div key={project._id} className="bg-gray-800/50 backdrop-blur-lg rounded-2xl p-6 border border-gray-700 shadow-xl hover:border-purple-500/50 transition-all">
-        
-        {/* Student Info */}
-        <div className="mb-4">
-          <h2 className="text-xl font-bold text-white">{project.leaderId?.name}</h2>
-          <p className="text-sm text-gray-400">{project.leaderId?.enrollment}</p>
-          <div className={`mt-2 inline-block px-3 py-1 rounded-full text-xs font-bold ${
-            project.srsSdsStatus === 'Approved' ? 'bg-green-500/20 text-green-300 border border-green-500/30' : 
-            project.srsSdsStatus === 'Rejected' ? 'bg-red-500/20 text-red-300 border border-red-500/30' :
-            project.srsSdsStatus === 'Changes Required' ? 'bg-yellow-500/20 text-yellow-300 border border-yellow-500/30' :
-            project.srsSdsStatus === 'Under Review' ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30' :
-            'bg-gray-500/20 text-gray-300 border border-gray-500/30'
-          }`}>
-            {project.srsSdsStatus || 'Pending Review'}
+      <div key={project._id} className="bg-gradient-to-br from-slate-800 to-slate-900 backdrop-blur-sm rounded-xl border border-white/10 p-6 hover:border-purple-500/30 transition-all hover:shadow-lg">
+        <div className="flex items-start justify-between mb-4">
+          <div>
+            <h2 className="text-xl font-bold text-white mb-1">{project.leaderId?.name}</h2>
+            <p className="text-sm text-white/60">{project.leaderId?.enrollment}</p>
+            <p className="text-sm text-white/80 mt-2 truncate">{project.projectTitle}</p>
           </div>
-        </div>
-
-        {/* Project Details */}
-        <div className="mb-6 space-y-3">
-          <p className="text-sm text-gray-300">
-            📋 <span className="font-semibold">SRS/SDS Review</span>
-          </p>
-          
-          {/* Documents */}
-          <div className="space-y-2">
-            {project.srsUrl && (
-              <a 
-                href={`http://localhost:5000/${project.srsUrl}`} 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="block w-full text-center py-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 rounded-lg text-sm font-semibold transition-all"
-              >
-                📄 View SRS Document
-              </a>
-            )}
-            {project.sdsUrl && (
-              <a 
-                href={`http://localhost:5000/${project.sdsUrl}`} 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="block w-full text-center py-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 rounded-lg text-sm font-semibold transition-all"
-              >
-                📄 View SDS Document
-              </a>
-            )}
-          </div>
-          
-          {/* Marks Status */}
-          <div className="bg-gray-900/50 p-3 rounded-lg">
-            <p className="text-sm font-semibold text-gray-400 mb-2">SRS/SDS Review Marks Status (15% weight):</p>
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-300">Coordinator:</span>
-                <span className={`px-2 py-1 rounded text-xs font-bold ${
-                  srsSdsMarks.coordinator !== null ? 'bg-green-500/20 text-green-300' : 'bg-yellow-500/20 text-yellow-300'
-                }`}>
-                  {srsSdsMarks.coordinator !== null ? `${srsSdsMarks.coordinator}/5` : 'Pending'}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-300">Supervisor:</span>
-                <span className={`px-2 py-1 rounded text-xs font-bold ${
-                  srsSdsMarks.supervisor !== null ? 'bg-green-500/20 text-green-300' : 'bg-yellow-500/20 text-yellow-300'
-                }`}>
-                  {srsSdsMarks.supervisor !== null ? `${srsSdsMarks.supervisor}/5` : 'Pending'}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-300">Your Marks:</span>
-                <span className={`px-2 py-1 rounded text-xs font-bold ${
-                  isEvaluated ? 'bg-green-500/20 text-green-300' : 'bg-yellow-500/20 text-yellow-300'
-                }`}>
-                  {isEvaluated ? `${panelMarks}/5` : 'Pending'}
-                </span>
-              </div>
-              {isEvaluated && (
-                <div className="pt-2 border-t border-gray-700">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-300">Total:</span>
-                    <span className="text-white font-bold text-sm">
-                      {totalMarks.total}/15 ({totalMarks.percentage}%)
-                    </span>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Supervisor Feedback */}
-          {project.supervisorFeedback && (
-            <div className="p-3 bg-blue-900/20 rounded-lg border border-blue-500/30">
-              <p className="text-xs text-blue-400 mb-1">Supervisor Feedback:</p>
-              <p className="text-sm text-gray-300">{project.supervisorFeedback}</p>
-            </div>
+          {isEvaluated ? (
+            <span className="bg-green-900/30 text-green-400 text-xs px-3 py-1 rounded-full border border-green-500/30">
+              ✅ Evaluated
+            </span>
+          ) : (
+            <span className="bg-purple-900/30 text-purple-400 text-xs px-3 py-1 rounded-full border border-purple-500/30">
+              Pending
+            </span>
           )}
         </div>
 
-        {/* Action Button */}
+        <div className="flex gap-3 mb-6">
+          {project.srsUrl && (
+            <a 
+              href={getFileUrl(project.srsUrl)} 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="flex-1 px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white rounded-lg font-medium transition-all hover:shadow-lg hover:shadow-blue-500/25 flex items-center justify-center gap-2 text-sm"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              View SRS
+            </a>
+          )}
+          {project.sdsUrl && (
+            <a 
+              href={getFileUrl(project.sdsUrl)} 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="flex-1 px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white rounded-lg font-medium transition-all hover:shadow-lg hover:shadow-blue-500/25 flex items-center justify-center gap-2 text-sm"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              View SDS
+            </a>
+          )}
+        </div>
+        
         <button 
           onClick={() => { 
             setSelectedProject({...project, evaluationType: 'srs-sds'}); 
-            setFeedback(""); 
-            setMarks(isEvaluated ? panelMarks.toString() : ''); 
+            setMarks(isEvaluated ? project.srsSdsReviewMarks.panel : ''); 
           }}
-          disabled={isEvaluated || project.srsSdsReviewCompleted}
-          className={`w-full py-3 rounded-lg font-bold transition-all ${
-            isEvaluated || project.srsSdsReviewCompleted ? 
-            'bg-gray-700 text-gray-400 cursor-not-allowed' : 
-            'bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700'
-          }`}
+          disabled={isEvaluated}
+          className={`w-full py-3 rounded-lg font-medium transition-all ${
+            isEvaluated 
+              ? 'bg-gradient-to-r from-green-600 to-green-700 text-white' 
+              : 'bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 text-white hover:shadow-lg hover:shadow-purple-500/25'
+          } flex items-center justify-center gap-2`}
         >
-          {isEvaluated ? '✅ Already Evaluated' : 
-           project.srsSdsReviewCompleted ? '✅ All Evaluations Complete' : 
-           '📝 Evaluate SRS/SDS'}
+          {isEvaluated ? (
+            <>
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+              Graded: {project.srsSdsReviewMarks.panel}/5
+            </>
+          ) : (
+            <>
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Grade Documentation (5%)
+            </>
+          )}
         </button>
-        
-        {/* Show previous feedback if evaluated */}
-        {isEvaluated && project.srsSdsFeedback && (
-          <div className="mt-3 p-3 bg-gray-900/50 rounded-lg">
-            <p className="text-xs text-gray-400 mb-1">Your feedback:</p>
-            <p className="text-sm text-gray-300">{project.srsSdsFeedback}</p>
-          </div>
-        )}
       </div>
     );
   };
 
-  // Render Empty State
-  const renderEmptyState = (type) => (
-    <div className="bg-gray-800/50 backdrop-blur-lg rounded-2xl border border-gray-700 shadow-xl p-12 text-center">
-      <div className="text-6xl mb-4">{type === 'initial-defense' ? '📊' : '📋'}</div>
-      <h3 className="text-xl font-semibold text-white mb-2">
-        No {type === 'initial-defense' ? 'Initial Defense' : 'SRS/SDS'} Projects
-      </h3>
-      <p className="text-gray-400">
-        {type === 'initial-defense' 
-          ? 'Projects will appear here after defense scheduling and PPT upload.'
-          : 'Projects will appear here after SRS/SDS documents are uploaded and submitted for review.'}
-      </p>
+  const renderFinalDefenseCard = (project) => {
+    const isEvaluated = project.finalDefense?.marks?.panel !== null && project.finalDefense?.marks?.panel !== undefined;
+    return (
+      <div key={project._id} className="bg-gradient-to-br from-slate-800 to-slate-900 backdrop-blur-sm rounded-xl border border-white/10 p-6 hover:border-emerald-500/30 transition-all hover:shadow-lg">
+        <div className="flex items-start justify-between mb-4">
+          <div>
+            <h2 className="text-xl font-bold text-white mb-1">{project.leaderId?.name}</h2>
+            <p className="text-sm text-white/60">{project.leaderId?.enrollment}</p>
+            <p className="text-sm text-white/80 mt-2 truncate">{project.projectTitle}</p>
+          </div>
+          {isEvaluated ? (
+            <span className="bg-green-900/30 text-green-400 text-xs px-3 py-1 rounded-full border border-green-500/30">
+              ✅ Evaluated
+            </span>
+          ) : (
+            <span className="bg-emerald-900/30 text-emerald-400 text-xs px-3 py-1 rounded-full border border-emerald-500/30">
+              Pending
+            </span>
+          )}
+        </div>
+
+        {project.finalDefense?.scheduledDate && (
+          <div className="mb-4 p-3 bg-white/5 border border-white/10 rounded-lg">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs text-white/60">Defense Date</p>
+                <p className="text-sm text-white font-medium">
+                  {new Date(project.finalDefense.scheduledDate).toLocaleDateString()}
+                </p>
+              </div>
+              <svg className="w-5 h-5 text-white/60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+            </div>
+          </div>
+        )}
+
+        {project.finalDefense?.finalPptUrl ? (
+          <a 
+            href={getFileUrl(project.finalDefense.finalPptUrl)} 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="block w-full mb-6 px-4 py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white rounded-lg font-medium transition-all hover:shadow-lg hover:shadow-blue-500/25 flex items-center justify-center gap-2"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            Download Final Presentation
+          </a>
+        ) : (
+          <div className="mb-6 p-3 bg-white/5 border border-white/10 rounded-lg text-center">
+            <p className="text-white/60">Final presentation pending</p>
+          </div>
+        )}
+
+        <button 
+          onClick={() => { 
+            setSelectedProject({...project, evaluationType: 'final-defense'}); 
+            setMarks(isEvaluated ? project.finalDefense.marks.panel : ''); 
+          }}
+          disabled={isEvaluated || !project.finalDefense?.finalPptUrl}
+          className={`w-full py-3 rounded-lg font-medium transition-all ${
+            isEvaluated 
+              ? 'bg-gradient-to-r from-green-600 to-green-700 text-white' 
+              : project.finalDefense?.finalPptUrl
+                ? 'bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-white hover:shadow-lg hover:shadow-emerald-500/25'
+                : 'bg-gray-600 text-white/50 cursor-not-allowed'
+          } flex items-center justify-center gap-2`}
+        >
+          {isEvaluated ? (
+            <>
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+              Graded: {project.finalDefense.marks.panel}/30
+            </>
+          ) : project.finalDefense?.finalPptUrl ? (
+            <>
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Grade Final Defense (30%)
+            </>
+          ) : (
+            'Awaiting Presentation'
+          )}
+        </button>
+      </div>
+    );
+  };
+
+  const renderEmptyState = () => (
+    <div className="col-span-full bg-gradient-to-br from-slate-800 to-slate-900 backdrop-blur-sm rounded-xl border border-white/10 p-12 text-center">
+      <div className="text-6xl mb-6">📂</div>
+      <h3 className="text-xl font-bold text-white mb-2">No Projects Available</h3>
+      <p className="text-white/60 mb-6">Waiting for projects to reach this evaluation stage.</p>
+      <button 
+        onClick={fetchData}
+        className="px-6 py-3 bg-white/10 hover:bg-white/20 border border-white/20 rounded-lg text-white font-medium transition-all flex items-center gap-2 mx-auto"
+      >
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+        </svg>
+        Refresh
+      </button>
     </div>
   );
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-[#0a2342] via-[#1a365d] to-[#0a2342] flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
+          <p className="text-white/70">Loading evaluation projects...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white p-6">
+    <div className="min-h-screen bg-gradient-to-b from-[#0a2342] via-[#1a365d] to-[#0a2342] text-white">
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold bg-gradient-to-r from-red-400 to-orange-500 bg-clip-text text-transparent">
-          Panel Member Dashboard
-        </h1>
-        <p className="text-gray-400 mt-2">Evaluate Student Projects (Initial Defense & SRS/SDS Review)</p>
-      </div>
-
-      {/* Tabs */}
-      <div className="flex space-x-4 mb-8">
-        <button
-          onClick={() => setActiveTab('initial-defense')}
-          className={`px-6 py-3 rounded-lg font-semibold transition-all ${
-            activeTab === 'initial-defense'
-              ? 'bg-gradient-to-r from-red-500 to-orange-600'
-              : 'bg-gray-700 hover:bg-gray-600'
-          }`}
-        >
-          🎤 Initial Defense Evaluation
-        </button>
-        <button
-          onClick={() => setActiveTab('srs-sds-evaluation')}
-          className={`px-6 py-3 rounded-lg font-semibold transition-all ${
-            activeTab === 'srs-sds-evaluation'
-              ? 'bg-gradient-to-r from-purple-500 to-purple-600'
-              : 'bg-gray-700 hover:bg-gray-600'
-          }`}
-        >
-          📋 SRS/SDS Evaluation
-        </button>
-      </div>
-
-      {/* Debug Panel */}
-      <div className="mb-6 bg-gray-800/50 p-4 rounded-lg border border-gray-700">
-        <div className="flex justify-between items-center mb-2">
-          <h3 className="font-semibold text-white">Debug Information</h3>
-          <div className="flex space-x-2">
-            <button
+      <header className="bg-white/5 backdrop-blur-sm border-b border-white/10 shadow-lg">
+        <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
+          <div className="flex items-center gap-4">
+            <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center shadow">
+              <div className="text-center">
+                <div className="text-[9px] font-bold text-[#0a2342] leading-tight">BU</div>
+                <div className="text-[7px] font-bold text-[#0a2342] leading-tight">FYP</div>
+              </div>
+            </div>
+            <div>
+              <h1 className="text-xl font-bold text-white">Panel Member Dashboard</h1>
+              <p className="text-sm text-white/70">Project Evaluation Portal</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <button 
               onClick={fetchData}
-              className="px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all shadow-lg"
+              className="px-4 py-2 bg-white/10 hover:bg-white/20 border border-white/20 rounded-lg text-sm font-medium transition-all hover:scale-105 flex items-center gap-2"
             >
-              🔄 Refresh List
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              Refresh
             </button>
-            <button
-              onClick={testBackendEndpoints}
-              className="px-4 py-2 bg-gradient-to-r from-yellow-500 to-yellow-600 text-white rounded-lg hover:from-yellow-600 hover:to-yellow-700 transition-all shadow-lg"
+            <button 
+              onClick={handleLogout}
+              className="px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg text-sm font-medium transition-colors"
             >
-              🧪 Test Backend
-            </button>
-            <button
-              onClick={() => setDebugInfo('')}
-              className="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-all"
-            >
-              Clear Log
+              Logout
             </button>
           </div>
         </div>
-        <div className="text-sm text-gray-300 font-mono bg-black/30 p-3 rounded max-h-32 overflow-y-auto">
-          {debugInfo || 'No debug information yet. Click "Test Backend" to check connections.'}
-        </div>
-      </div>
+      </header>
 
-      {loading ? (
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-red-500 mx-auto"></div>
-          <p className="ml-4 text-gray-400">Loading projects...</p>
+      <main className="max-w-7xl mx-auto px-6 py-8">
+        {/* Tab Navigation */}
+        <div className="flex gap-3 mb-8 overflow-x-auto pb-2">
+          <button 
+            onClick={() => setActiveTab('initial-defense')}
+            className={`px-6 py-3 rounded-lg font-medium transition-all flex items-center gap-2 whitespace-nowrap ${
+              activeTab === 'initial-defense' 
+                ? 'bg-gradient-to-r from-red-600 to-red-700 text-white shadow-lg shadow-red-500/25' 
+                : 'bg-white/10 hover:bg-white/20 text-white/80'
+            }`}
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+            </svg>
+            Initial Defense (5%)
+          </button>
+          <button 
+            onClick={() => setActiveTab('srs-sds-evaluation')}
+            className={`px-6 py-3 rounded-lg font-medium transition-all flex items-center gap-2 whitespace-nowrap ${
+              activeTab === 'srs-sds-evaluation' 
+                ? 'bg-gradient-to-r from-purple-600 to-purple-700 text-white shadow-lg shadow-purple-500/25' 
+                : 'bg-white/10 hover:bg-white/20 text-white/80'
+            }`}
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            SRS/SDS (5%)
+          </button>
+          <button 
+            onClick={() => setActiveTab('final-defense')}
+            className={`px-6 py-3 rounded-lg font-medium transition-all flex items-center gap-2 whitespace-nowrap ${
+              activeTab === 'final-defense' 
+                ? 'bg-gradient-to-r from-emerald-600 to-emerald-700 text-white shadow-lg shadow-emerald-500/25' 
+                : 'bg-white/10 hover:bg-white/20 text-white/80'
+            }`}
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            Final Defense (30%)
+          </button>
         </div>
-      ) : activeTab === 'initial-defense' ? (
-        initialDefenseProjects.length === 0 ? (
-          renderEmptyState('initial-defense')
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {initialDefenseProjects.map(renderInitialDefenseCard)}
-          </div>
-        )
-      ) : (
-        srsSdsProjects.length === 0 ? (
-          renderEmptyState('srs-sds-evaluation')
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {srsSdsProjects.map(renderSrsSdsCard)}
-          </div>
-        )
-      )}
+
+        {/* Projects Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {activeTab === 'initial-defense' && (
+            initialDefenseProjects.length === 0 
+              ? renderEmptyState() 
+              : initialDefenseProjects.map(renderInitialDefenseCard)
+          )}
+          
+          {activeTab === 'srs-sds-evaluation' && (
+            srsSdsProjects.length === 0 
+              ? renderEmptyState() 
+              : srsSdsProjects.map(renderSrsSdsCard)
+          )}
+          
+          {activeTab === 'final-defense' && (
+            finalDefenseProjects.length === 0 
+              ? renderEmptyState() 
+              : finalDefenseProjects.map(renderFinalDefenseCard)
+          )}
+        </div>
+      </main>
 
       {/* Evaluation Modal */}
       {selectedProject && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl shadow-2xl max-w-2xl w-full border border-gray-700">
-            <div className="p-6 border-b border-gray-700">
-              <div className="flex justify-between items-start">
-                <div>
-                  <h2 className="text-2xl font-bold text-white">
-                    {selectedProject.evaluationType === 'initial-defense' 
-                      ? 'Initial Defense Evaluation' 
-                      : 'SRS/SDS Document Evaluation'}
-                  </h2>
-                  <p className="text-gray-400 mt-1">Student: {selectedProject.leaderId?.name}</p>
-                  <p className="text-sm text-gray-500 mt-1">
-                    {selectedProject.evaluationType === 'initial-defense' 
-                      ? 'Panel Evaluation (5% weight)' 
-                      : 'SRS/SDS Review (5% weight)'}
-                  </p>
-                </div>
-                <button
-                  onClick={resetForm}
-                  className="text-gray-400 hover:text-gray-200 text-2xl"
-                >
-                  ✕
-                </button>
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-50 p-4">
+          <div className="bg-gradient-to-b from-slate-800 to-slate-900 border border-white/10 rounded-xl w-full max-w-md p-6 shadow-2xl relative">
+            {/* Close Button */}
+            <button 
+              onClick={resetForm}
+              className="absolute top-4 right-4 text-white/70 hover:text-white transition-colors bg-white/10 hover:bg-white/20 w-8 h-8 rounded-full flex items-center justify-center"
+            >
+              ✕
+            </button>
+
+            <div className="flex items-center gap-3 mb-6">
+              <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${
+                selectedProject.evaluationType === 'final-defense' ? 'bg-gradient-to-br from-emerald-900 to-emerald-800' :
+                selectedProject.evaluationType === 'initial-defense' ? 'bg-gradient-to-br from-red-900 to-red-800' :
+                'bg-gradient-to-br from-purple-900 to-purple-800'
+              }`}>
+                <span className="text-2xl">
+                  {selectedProject.evaluationType === 'final-defense' ? '🏆' :
+                   selectedProject.evaluationType === 'initial-defense' ? '🎤' : '📋'}
+                </span>
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-white">
+                  {selectedProject.evaluationType === 'final-defense' ? 'Final Defense Evaluation' : 
+                   selectedProject.evaluationType === 'initial-defense' ? 'Initial Defense Evaluation' : 
+                   'SRS/SDS Documentation Evaluation'}
+                </h2>
+                <p className="text-sm text-white/60">{selectedProject.leaderId?.name}</p>
               </div>
             </div>
 
-            <div className="p-6 space-y-6">
-              {/* Project Details */}
-              <div className="bg-gray-900 p-4 rounded-lg">
-                <h3 className="font-semibold text-white mb-3">Evaluation Details</h3>
-                <div className="grid grid-cols-2 gap-3 text-sm">
-                  <div>
-                    <span className="text-gray-400">Student:</span>
-                    <div className="font-medium text-white">{selectedProject.leaderId?.name}</div>
-                  </div>
-                  <div>
-                    <span className="text-gray-400">Your Role:</span>
-                    <div className="font-medium text-red-400">Panel Member (5% weight)</div>
-                  </div>
-                  <div>
-                    <span className="text-gray-400">Enrollment:</span>
-                    <div className="font-medium text-white">{selectedProject.leaderId?.enrollment}</div>
-                  </div>
-                  <div>
-                    <span className="text-gray-400">Evaluation Type:</span>
-                    <div className="font-medium text-blue-400">
-                      {selectedProject.evaluationType === 'initial-defense' ? 'Initial Defense' : 'SRS/SDS Review'}
-                    </div>
-                  </div>
-                </div>
-                
-                {/* Document Links */}
-                {selectedProject.evaluationType === 'initial-defense' && selectedProject.presentationUrl && (
-                  <div className="mt-3 pt-3 border-t border-gray-700">
-                    <span className="text-gray-400">Presentation:</span>
-                    <a
-                      href={`http://localhost:5000/${selectedProject.presentationUrl}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-400 hover:underline block"
-                    >
-                      📥 Download Presentation
-                    </a>
-                  </div>
-                )}
-                
-                {selectedProject.evaluationType === 'srs-sds' && (
-                  <div className="mt-3 pt-3 border-t border-gray-700">
-                    <span className="text-gray-400">Documents:</span>
-                    <div className="flex space-x-3 mt-1">
-                      {selectedProject.srsUrl && (
-                        <a
-                          href={`http://localhost:5000/${selectedProject.srsUrl}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-blue-400 hover:underline text-sm"
-                        >
-                          📄 SRS
-                        </a>
-                      )}
-                      {selectedProject.sdsUrl && (
-                        <a
-                          href={`http://localhost:5000/${selectedProject.sdsUrl}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-blue-400 hover:underline text-sm"
-                        >
-                          📄 SDS
-                        </a>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Grading Section */}
+            <div className="space-y-6">
               <div>
-                <label className="block font-semibold text-white mb-2">
-                  Enter Marks (0 to 5) <span className="text-red-500">*</span>
+                <label className="block text-sm font-medium text-white/80 mb-2">
+                  Marks ({selectedProject.evaluationType === 'final-defense' ? '0-30' : '0-5'})
                 </label>
-                <input
-                  type="number"
-                  value={marks}
-                  onChange={(e) => setMarks(e.target.value)}
+                <input 
+                  type="number" 
+                  value={marks} 
+                  onChange={e => setMarks(e.target.value)} 
+                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/40 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                  placeholder={`Enter marks (${selectedProject.evaluationType === 'final-defense' ? '30 max' : '5 max'})`}
                   min="0"
-                  max="5"
+                  max={selectedProject.evaluationType === 'final-defense' ? '30' : '5'}
                   step="0.5"
-                  className="w-full p-3 bg-gray-900 border border-gray-700 text-white rounded-lg focus:ring-2 focus:ring-red-500"
-                  placeholder="Enter marks out of 5"
                 />
-                <p className="text-sm text-gray-400 mt-1">
-                  Grading Rubric: 5=Excellent, 4=Good, 3=Satisfactory, 2=Needs Improvement, 1=Poor, 0=Failed
-                </p>
               </div>
 
-              {/* Feedback Section */}
-              <div>
-                <label className="block font-semibold text-white mb-2">
-                  Feedback / Comments (Optional)
-                </label>
-                <textarea
-                  value={feedback}
-                  onChange={(e) => setFeedback(e.target.value)}
-                  className="w-full p-3 bg-gray-900 border border-gray-700 text-white rounded-lg focus:ring-2 focus:ring-red-500"
-                  rows="4"
-                  placeholder={
-                    selectedProject.evaluationType === 'initial-defense'
-                      ? "Provide feedback on presentation skills, content, delivery, technical aspects..."
-                      : "Provide feedback on SRS/SDS quality, completeness, clarity, technical accuracy..."
+              {selectedProject.evaluationType !== 'final-defense' && (
+                <div>
+                  <label className="block text-sm font-medium text-white/80 mb-2">Feedback</label>
+                  <textarea 
+                    value={feedback} 
+                    onChange={e => setFeedback(e.target.value)} 
+                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/40 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                    rows="4"
+                    placeholder="Provide constructive feedback..."
+                  ></textarea>
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-4">
+                <button 
+                  onClick={
+                    selectedProject.evaluationType === 'final-defense' 
+                      ? handleSubmitFinalDefenseEvaluation 
+                      : selectedProject.evaluationType === 'initial-defense' 
+                      ? () => handleSubmitInitialDefenseEvaluation('Defense Cleared') 
+                      : handleSubmitSrsSdsEvaluation
                   }
-                />
+                  disabled={processing}
+                  className={`py-3 px-4 rounded-lg font-medium transition-all hover:shadow-lg ${
+                    selectedProject.evaluationType === 'final-defense' 
+                      ? 'bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-white hover:shadow-emerald-500/25' 
+                      : selectedProject.evaluationType === 'initial-defense' 
+                      ? 'bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white hover:shadow-red-500/25'
+                      : 'bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 text-white hover:shadow-purple-500/25'
+                  } disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2`}
+                >
+                  {processing ? (
+                    <>
+                      <svg className="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Submitting...
+                    </>
+                  ) : (
+                    'Submit Evaluation'
+                  )}
+                </button>
+                <button 
+                  onClick={resetForm}
+                  className="py-3 px-4 bg-white/10 hover:bg-white/20 border border-white/20 text-white font-medium rounded-lg transition-all"
+                >
+                  Cancel
+                </button>
               </div>
-
-              {/* Action Buttons */}
-              <div className="grid grid-cols-2 gap-3 pt-4">
-                {selectedProject.evaluationType === 'initial-defense' ? (
-                  <>
-                    <button
-                      onClick={() => handleSubmitInitialDefenseEvaluation('Defense Cleared')}
-                      disabled={processing || !marks || marks < 0 || marks > 5}
-                      className="px-6 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg hover:from-green-700 hover:to-green-800 font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                    >
-                      {processing ? 'Submitting...' : '✅ Submit Marks & Clear Defense'}
-                    </button>
-                    
-                    <button
-                      onClick={() => handleSubmitInitialDefenseEvaluation('Defense Changes Required')}
-                      disabled={processing || !feedback.trim()}
-                      className="px-6 py-3 bg-gradient-to-r from-yellow-600 to-yellow-700 text-white rounded-lg hover:from-yellow-700 hover:to-yellow-800 font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                    >
-                      {processing ? 'Processing...' : '⚠️ Request Changes'}
-                    </button>
-                  </>
-                ) : (
-                  <button
-                    onClick={handleSubmitSrsSdsEvaluation}
-                    disabled={processing || !marks || marks < 0 || marks > 5}
-                    className="col-span-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-lg hover:from-purple-700 hover:to-purple-800 font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                  >
-                    {processing ? 'Submitting...' : '✅ Submit SRS/SDS Evaluation'}
-                  </button>
-                )}
-              </div>
-              
-              {/* Cancel Button */}
-              <button
-                onClick={resetForm}
-                disabled={processing}
-                className="w-full py-2.5 bg-gray-700 hover:bg-gray-600 text-white rounded-lg font-medium transition-all disabled:opacity-50"
-              >
-                Cancel
-              </button>
             </div>
           </div>
         </div>
