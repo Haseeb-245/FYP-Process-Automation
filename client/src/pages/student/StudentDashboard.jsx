@@ -1,6 +1,6 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-
 
 const StudentDashboard = () => {
   const navigate = useNavigate();
@@ -13,7 +13,7 @@ const StudentDashboard = () => {
   const [pptFile, setPptFile] = useState(null);
   const [srsFile, setSrsFile] = useState(null);
   const [sdsFile, setSdsFile] = useState(null);
-  const [finalPptFile, setFinalPptFile] = useState(null); // UPDATED: For Final Defense PPT
+  const [finalPptFile, setFinalPptFile] = useState(null);
 
   // UI States
   const [uploading, setUploading] = useState(false);
@@ -60,7 +60,7 @@ const StudentDashboard = () => {
         docType === 'ppt' ? pptFile :
         docType === 'srs' ? srsFile :
         docType === 'sds' ? sdsFile :
-        docType === 'final-ppt' ? finalPptFile : null; // UPDATED
+        docType === 'final-ppt' ? finalPptFile : null;
 
     if (!fileToUpload) { 
       alert('Please select a file first!'); 
@@ -169,8 +169,147 @@ const StudentDashboard = () => {
     return 'bg-blue-100 text-blue-800 border-blue-300';
   };
 
+  // --- MARKING SCHEME CALCULATION ---
+  const calculateTotalMarks = () => {
+    if (!project) return { total: 0, breakdown: {}, letterGrade: 'N/A' };
+
+    const breakdown = {};
+    let total = 0;
+
+    // 1. Proposal Evaluation (10% weight)
+    // Proposal is typically evaluated by coordinator only
+    if (project.status === 'Approved - Waiting for Supervisor Consent' || 
+        project.status === 'Approved - Ready for Defense' ||
+        project.status === 'Scheduled for Defense') {
+      
+      // Proposal is considered "passed" if it reaches these stages
+      const proposalMarks = 8; // 8/10 for passing proposal
+      const proposalWeighted = (proposalMarks / 10) * 10; // 10% weight
+      
+      breakdown.proposal = {
+        marks: proposalMarks,
+        maxMarks: 10,
+        weighted: proposalWeighted.toFixed(2),
+        description: 'Proposal Defense Evaluation'
+      };
+      total += proposalWeighted;
+    }
+
+    // 2. Initial Defense Evaluation (10% weight)
+    if (project.initialDefenseMarks) {
+      const coordinatorMarks = project.initialDefenseMarks.coordinator || 0;
+      const supervisorMarks = project.initialDefenseMarks.supervisor || 0;
+      const panelMarks = project.initialDefenseMarks.panel || 0;
+      
+      // Average of all 3 evaluators (each out of 10)
+      const initialDefenseAverage = (coordinatorMarks + supervisorMarks + panelMarks) / 3;
+      // Convert to percentage of 10% weight
+      const initialDefenseWeighted = (initialDefenseAverage / 10) * 10;
+      
+      breakdown.initialDefense = {
+        marks: { coordinatorMarks, supervisorMarks, panelMarks },
+        average: initialDefenseAverage.toFixed(2),
+        maxMarks: 10,
+        weighted: initialDefenseWeighted.toFixed(2),
+        description: 'Initial Defense Evaluation'
+      };
+      total += initialDefenseWeighted;
+    }
+
+    // 3. SRS/SDS Evaluation (15% weight)
+    if (project.srsSdsReviewMarks) {
+      const coordinatorMarks = project.srsSdsReviewMarks.coordinator || 0;
+      const supervisorMarks = project.srsSdsReviewMarks.supervisor || 0;
+      const panelMarks = project.srsSdsReviewMarks.panel || 0;
+      
+      // Average of all 3 evaluators (each out of 15)
+      const srsSdsAverage = (coordinatorMarks + supervisorMarks + panelMarks) / 3;
+      // Convert to percentage of 15% weight
+      const srsSdsWeighted = (srsSdsAverage / 15) * 15;
+      
+      breakdown.srsSds = {
+        marks: { coordinatorMarks, supervisorMarks, panelMarks },
+        average: srsSdsAverage.toFixed(2),
+        maxMarks: 15,
+        weighted: srsSdsWeighted.toFixed(2),
+        description: 'SRS/SDS Documentation'
+      };
+      total += srsSdsWeighted;
+    }
+
+    // 4. Final Defense Evaluation (65% weight total)
+    if (project.finalDefense?.marks) {
+      const finalMarks = project.finalDefense.marks;
+      
+      // Individual marks and their weights (out of 65% total):
+      // - Coordinator: 15 marks out of 65 (23% weight of final defense)
+      // - Supervisor: 15 marks out of 65 (23% weight of final defense)
+      // - Panel: 25 marks out of 65 (38% weight of final defense)
+      // - External: 10 marks out of 65 (15% weight of final defense)
+      
+      const coordinatorMarks = finalMarks.coordinator || 0;
+      const supervisorMarks = finalMarks.supervisor || 0;
+      const panelMarks = finalMarks.panel || 0;
+      const externalMarks = finalMarks.external || 0;
+      
+      // Calculate weighted contributions (out of 65%)
+      const coordinatorWeighted = (coordinatorMarks / 15) * 15; // 15% of total
+      const supervisorWeighted = (supervisorMarks / 15) * 15;   // 15% of total
+      const panelWeighted = (panelMarks / 25) * 25;            // 25% of total
+      const externalWeighted = (externalMarks / 10) * 10;       // 10% of total
+      
+      const finalTotalWeighted = coordinatorWeighted + supervisorWeighted + panelWeighted + externalWeighted;
+      
+      breakdown.finalDefense = {
+        marks: { 
+          coordinatorMarks, 
+          supervisorMarks, 
+          panelMarks, 
+          externalMarks 
+        },
+        weighted: {
+          coordinator: coordinatorWeighted.toFixed(2),
+          supervisor: supervisorWeighted.toFixed(2),
+          panel: panelWeighted.toFixed(2),
+          external: externalWeighted.toFixed(2),
+          total: finalTotalWeighted.toFixed(2)
+        },
+        rawTotal: coordinatorMarks + supervisorMarks + panelMarks + externalMarks,
+        maxRawTotal: 65
+      };
+      total += finalTotalWeighted;
+    }
+
+    // Calculate letter grade based on percentage
+    const getLetterGrade = (percentage) => {
+      if (percentage >= 90) return 'A+';
+      if (percentage >= 85) return 'A';
+      if (percentage >= 80) return 'A-';
+      if (percentage >= 75) return 'B+';
+      if (percentage >= 70) return 'B';
+      if (percentage >= 65) return 'B-';
+      if (percentage >= 60) return 'C+';
+      if (percentage >= 55) return 'C';
+      if (percentage >= 50) return 'C-';
+      if (percentage >= 45) return 'D+';
+      if (percentage >= 40) return 'D';
+      return 'F';
+    };
+
+    const letterGrade = total > 0 ? getLetterGrade(total) : 'N/A';
+
+    return {
+      total: total.toFixed(2),
+      breakdown,
+      letterGrade,
+      isComplete: project.status === 'Project Completed'
+    };
+  };
+
   if (!student) return <div className="text-white p-10">Loading...</div>;
   if (loading) return <div className="min-h-screen bg-black flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div></div>;
+
+  const marksData = calculateTotalMarks();
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 to-black text-white">
@@ -195,7 +334,7 @@ const StudentDashboard = () => {
             {/* PHASE 1: PROPOSAL */}
             {!project || !isPhase1Complete(project.status) ? (
                 <div className="bg-gray-800 rounded-lg shadow-lg p-6 border border-gray-700">
-                    <h2 className="text-xl font-bold mb-4 flex items-center text-purple-400"><span className="mr-3">📄</span> Phase 1: Submit Proposal</h2>
+                    <h2 className="text-xl font-bold mb-4 flex items-center text-purple-400"><span className="mr-3">📄</span> Phase 1: Submit Proposal (10%)</h2>
                     
                     {project?.status === 'Approved - Waiting for Supervisor Consent' && (
                         <div className="mb-4 p-3 bg-purple-900/30 border border-purple-500/50 rounded text-purple-200 text-sm">
@@ -213,15 +352,23 @@ const StudentDashboard = () => {
                 </div>
             ) : (
                 <div className="bg-green-900/30 p-4 rounded-lg border border-green-500/50 flex justify-between items-center">
-                    <div><h3 className="font-bold text-green-400">Phase 1 Completed</h3></div>
-                    <span className="text-2xl">✅</span>
+                    <div>
+                      <h3 className="font-bold text-green-400">Phase 1 Completed</h3>
+                      <p className="text-xs text-gray-400">Proposal Evaluation (10%)</p>
+                    </div>
+                    {marksData.breakdown.proposal && (
+                      <div className="text-right">
+                        <p className="text-green-300 font-bold">{marksData.breakdown.proposal.weighted}%</p>
+                        <p className="text-xs text-gray-400">{marksData.breakdown.proposal.marks}/{marksData.breakdown.proposal.maxMarks}</p>
+                      </div>
+                    )}
                 </div>
             )}
 
             {/* PHASE 2: INITIAL DEFENSE */}
             {project && isPhase2Active(project.status) && (
                 <div className={`bg-gray-800 rounded-lg shadow-lg p-6 border ${project.defenseDate ? 'border-blue-500' : 'border-gray-700'}`}>
-                    <h2 className="text-xl font-bold mb-4 flex items-center text-blue-400"><span className="mr-3">🎤</span> Phase 2: Initial Defense</h2>
+                    <h2 className="text-xl font-bold mb-4 flex items-center text-blue-400"><span className="mr-3">🎤</span> Phase 2: Initial Defense (10%)</h2>
                     {project.defenseDate ? (
                         <>
                             <div className="mb-4 p-3 bg-blue-900/20 rounded border border-blue-500/30">
@@ -242,7 +389,7 @@ const StudentDashboard = () => {
             {/* PHASE 3: SRS/SDS */}
             {project && (project.status === 'Defense Cleared' || project.srsSdsStatus) && (
                  <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl shadow-xl p-6 border border-blue-500/50">
-                    <h2 className="text-2xl font-bold text-blue-400 mb-4">📋 Phase 3: SRS/SDS</h2>
+                    <h2 className="text-2xl font-bold text-blue-400 mb-4">📋 Phase 3: SRS/SDS (15%)</h2>
                     <div className="grid grid-cols-2 gap-4 mb-4">
                         <div className="bg-gray-900/50 p-4 rounded border border-gray-700">
                              <h3 className="text-sm font-bold mb-2">SRS Upload</h3>
@@ -339,7 +486,7 @@ const StudentDashboard = () => {
             {/* PHASE 5: FINAL DEFENSE */}
             {project && (project.status === 'Final Defense Scheduled' || project.status === 'Final Defense Pending' || project.status === 'Project Completed' || project.finalDefense?.scheduledDate) && (
                 <div className="bg-gradient-to-br from-red-900/40 to-black rounded-2xl shadow-xl p-6 border border-red-500">
-                    <h2 className="text-2xl font-bold text-red-500 mb-4">🎓 Phase 5: Final Defense</h2>
+                    <h2 className="text-2xl font-bold text-red-500 mb-4">🎓 Phase 5: Final Defense (65%)</h2>
                     
                     {/* Schedule Info */}
                     <div className="mb-6 bg-red-900/20 p-4 rounded border border-red-500/30 text-center">
@@ -361,25 +508,60 @@ const StudentDashboard = () => {
 
                     {/* Final Grades Display */}
                     <div>
-                        <h3 className="text-sm font-bold text-white mb-3">🏆 Final Evaluation (30%)</h3>
-                        <div className="grid grid-cols-2 gap-2 text-sm">
-                            <GradeBox role="Coordinator" mark={project.finalDefense?.marks?.coordinator} />
-                            <GradeBox role="Supervisor" mark={project.finalDefense?.marks?.supervisor} />
-                            <GradeBox role="Panel" mark={project.finalDefense?.marks?.panel} />
-                            <GradeBox role="External" mark={project.finalDefense?.marks?.external} />
+                        <h3 className="text-sm font-bold text-white mb-3">🏆 Final Evaluation Breakdown</h3>
+                        <div className="space-y-2 mb-4">
+                            <div className="flex justify-between text-sm">
+                                <span className="text-gray-400">Coordinator (15%):</span>
+                                <span className={`font-bold ${project.finalDefense?.marks?.coordinator ? 'text-green-400' : 'text-yellow-500'}`}>
+                                    {project.finalDefense?.marks?.coordinator || '-'}/15
+                                </span>
+                            </div>
+                            <div className="flex justify-between text-sm">
+                                <span className="text-gray-400">Supervisor (15%):</span>
+                                <span className={`font-bold ${project.finalDefense?.marks?.supervisor ? 'text-green-400' : 'text-yellow-500'}`}>
+                                    {project.finalDefense?.marks?.supervisor || '-'}/15
+                                </span>
+                            </div>
+                            <div className="flex justify-between text-sm">
+                                <span className="text-gray-400">Panel (25%):</span>
+                                <span className={`font-bold ${project.finalDefense?.marks?.panel ? 'text-green-400' : 'text-yellow-500'}`}>
+                                    {project.finalDefense?.marks?.panel || '-'}/25
+                                </span>
+                            </div>
+                            <div className="flex justify-between text-sm">
+                                <span className="text-gray-400">External (10%):</span>
+                                <span className={`font-bold ${project.finalDefense?.marks?.external ? 'text-green-400' : 'text-yellow-500'}`}>
+                                    {project.finalDefense?.marks?.external || '-'}/10
+                                </span>
+                            </div>
                         </div>
-                         {project.status === 'Project Completed' && (
-                             <div className="mt-4 p-3 bg-green-500 text-black font-bold text-center rounded animate-pulse">
-                                 🎉 DEGREE COMPLETED! CONGRATULATIONS!
-                             </div>
-                         )}
+                        
+                        {marksData.breakdown.finalDefense && (
+                            <div className="mt-4 p-3 bg-gradient-to-r from-gray-800 to-gray-900 rounded border border-gray-600">
+                                <div className="flex justify-between items-center mb-1">
+                                    <span className="text-sm text-gray-300">Final Defense Total:</span>
+                                    <span className="text-lg font-bold text-white">
+                                        {marksData.breakdown.finalDefense.weighted.total}%
+                                    </span>
+                                </div>
+                                <div className="text-xs text-gray-500">
+                                    Raw: {marksData.breakdown.finalDefense.rawTotal}/{marksData.breakdown.finalDefense.maxRawTotal}
+                                </div>
+                            </div>
+                        )}
+                        
+                        {project.status === 'Project Completed' && (
+                            <div className="mt-4 p-3 bg-gradient-to-r from-green-600 to-emerald-700 text-white font-bold text-center rounded animate-pulse">
+                                Fyp Process Completed
+                            </div>
+                        )}
                     </div>
                 </div>
             )}
 
         </div>
 
-        {/* === RIGHT COL: STATUS & TIMELINE === */}
+        {/* === RIGHT COL: STATUS & TOTAL MARKS === */}
         <div className="h-fit space-y-6">
             <div className="bg-gray-800 rounded-lg shadow-lg p-6 border border-gray-700">
                 <h2 className="text-xl font-bold mb-6 flex items-center"><span className="mr-3">📊</span> Project Status</h2>
@@ -410,6 +592,131 @@ const StudentDashboard = () => {
                     </div>
                 )}
             </div>
+
+            {/* === TOTAL MARKS SECTION === */}
+            <div className="bg-gradient-to-br from-purple-900/40 to-blue-900/40 rounded-2xl shadow-xl p-6 border border-purple-500">
+                <h2 className="text-xl font-bold mb-4 flex items-center text-purple-400">
+                    <span className="mr-3">🏆</span> Overall Grading Summary
+                </h2>
+                
+                {marksData.total > 0 ? (
+                    <div className="space-y-4">
+                        {/* Total Percentage Card */}
+                        <div className="bg-gradient-to-r from-purple-900/50 to-blue-900/50 p-4 rounded-xl border border-purple-500/30 text-center">
+                            <div className="text-3xl font-bold text-white mb-1">{marksData.total}%</div>
+                            <div className="text-lg font-bold text-purple-300">{marksData.letterGrade}</div>
+                            <p className="text-xs text-gray-400 mt-2">
+                                {marksData.isComplete ? '✅ Evaluation Complete' : '⏳ Evaluation In Progress'}
+                            </p>
+                        </div>
+
+                        {/* Breakdown */}
+                        <div className="space-y-3">
+                            <h3 className="text-sm font-bold text-gray-300">Marks Breakdown</h3>
+                            
+                            {/* Proposal (10%) */}
+                            {marksData.breakdown.proposal && (
+                                <div className="bg-gray-800/50 p-3 rounded border border-gray-700">
+                                    <div className="flex justify-between items-center mb-1">
+                                        <span className="text-sm text-purple-400">Proposal Defense</span>
+                                        <span className="text-xs text-gray-400">10% weight</span>
+                                    </div>
+                                    <div className="flex justify-between text-sm">
+                                        <span className="text-gray-400">
+                                            Marks: {marksData.breakdown.proposal.marks}/{marksData.breakdown.proposal.maxMarks}
+                                        </span>
+                                        <span className="text-green-400 font-bold">
+                                            +{marksData.breakdown.proposal.weighted}%
+                                        </span>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Initial Defense (10%) */}
+                            {marksData.breakdown.initialDefense && (
+                                <div className="bg-gray-800/50 p-3 rounded border border-gray-700">
+                                    <div className="flex justify-between items-center mb-1">
+                                        <span className="text-sm text-blue-400">Initial Defense</span>
+                                        <span className="text-xs text-gray-400">10% weight</span>
+                                    </div>
+                                    <div className="flex justify-between text-sm">
+                                        <span className="text-gray-400">
+                                            Avg: {marksData.breakdown.initialDefense.average}/{marksData.breakdown.initialDefense.maxMarks}
+                                        </span>
+                                        <span className="text-green-400 font-bold">
+                                            +{marksData.breakdown.initialDefense.weighted}%
+                                        </span>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* SRS/SDS (15%) */}
+                            {marksData.breakdown.srsSds && (
+                                <div className="bg-gray-800/50 p-3 rounded border border-gray-700">
+                                    <div className="flex justify-between items-center mb-1">
+                                        <span className="text-sm text-blue-400">SRS/SDS Documentation</span>
+                                        <span className="text-xs text-gray-400">15% weight</span>
+                                    </div>
+                                    <div className="flex justify-between text-sm">
+                                        <span className="text-gray-400">
+                                            Avg: {marksData.breakdown.srsSds.average}/{marksData.breakdown.srsSds.maxMarks}
+                                        </span>
+                                        <span className="text-green-400 font-bold">
+                                            +{marksData.breakdown.srsSds.weighted}%
+                                        </span>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Final Defense (65%) */}
+                            {marksData.breakdown.finalDefense && (
+                                <div className="bg-gray-800/50 p-3 rounded border border-gray-700">
+                                    <div className="flex justify-between items-center mb-1">
+                                        <span className="text-sm text-red-400">Final Defense</span>
+                                        <span className="text-xs text-gray-400">65% weight</span>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <div className="text-xs text-gray-500 mb-1">Individual Contributions:</div>
+                                        <div className="grid grid-cols-2 gap-2 text-xs">
+                                            <div className="text-gray-400">Coordinator:</div>
+                                            <div className="text-right text-green-400">+{marksData.breakdown.finalDefense.weighted.coordinator}%</div>
+                                            <div className="text-gray-400">Supervisor:</div>
+                                            <div className="text-right text-green-400">+{marksData.breakdown.finalDefense.weighted.supervisor}%</div>
+                                            <div className="text-gray-400">Panel:</div>
+                                            <div className="text-right text-green-400">+{marksData.breakdown.finalDefense.weighted.panel}%</div>
+                                            <div className="text-gray-400">External:</div>
+                                            <div className="text-right text-green-400">+{marksData.breakdown.finalDefense.weighted.external}%</div>
+                                        </div>
+                                        <div className="pt-2 border-t border-gray-700 flex justify-between text-sm">
+                                            <span className="text-gray-400">Final Defense Total:</span>
+                                            <span className="text-green-400 font-bold">
+                                                +{marksData.breakdown.finalDefense.weighted.total}%
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Weight Distribution Legend */}
+                        <div className="pt-4 border-t border-gray-700">
+                            <h4 className="text-xs font-bold text-gray-400 mb-2">Grading Weight Distribution:</h4>
+                            <div className="grid grid-cols-4 gap-1 text-xs">
+                                <div className="bg-purple-900/30 p-1 rounded text-center text-purple-300">Proposal: 10%</div>
+                                <div className="bg-blue-900/30 p-1 rounded text-center text-blue-300">Initial: 10%</div>
+                                <div className="bg-blue-900/30 p-1 rounded text-center text-blue-300">SRS/SDS: 15%</div>
+                                <div className="bg-red-900/30 p-1 rounded text-center text-red-300">Final: 65%</div>
+                            </div>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="text-center py-6">
+                        <div className="text-4xl mb-2">📊</div>
+                        <p className="text-gray-400">Marks will appear here as evaluation progresses</p>
+                        <p className="text-xs text-gray-500 mt-2">Complete each phase to see your marks</p>
+                    </div>
+                )}
+            </div>
         </div>
 
       </div>
@@ -422,15 +729,6 @@ const TimelineItem = ({ done, label }) => (
     <div className="flex items-center">
         <div className={`w-3 h-3 rounded-full mr-3 ${done ? 'bg-green-500' : 'bg-gray-600'}`}></div>
         <span className={`text-sm ${done ? 'text-white' : 'text-gray-500'}`}>{label}</span>
-    </div>
-);
-
-const GradeBox = ({ role, mark }) => (
-    <div className="bg-gray-900 p-2 rounded border border-gray-700 flex justify-between">
-        <span className="text-gray-400">{role}</span>
-        <span className={`font-bold ${mark ? 'text-green-400' : 'text-yellow-500'}`}>
-            {mark ? mark : '-'}
-        </span>
     </div>
 );
 
