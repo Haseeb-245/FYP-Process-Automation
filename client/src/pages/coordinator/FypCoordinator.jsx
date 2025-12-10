@@ -13,8 +13,210 @@ import {
   FileCheck,
   Download,
   Search,
-  BookOpen // ← ADD THIS IMPORT
+  BookOpen,
+  GraduationCap // ← ADDED THIS
 } from "lucide-react";
+
+// ============================================
+// FINAL DEFENSE COORDINATOR COMPONENT (NEW)
+// ============================================
+export const FinalDefenseCoordinator = () => {
+  const [projects, setProjects] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedProject, setSelectedProject] = useState(null);
+  
+  // Scheduling State
+  const [defenseDate, setDefenseDate] = useState('');
+  
+  // Grading State
+  const [marks, setMarks] = useState('');
+  const [processing, setProcessing] = useState(false);
+
+  useEffect(() => {
+    fetchFinalDefenseProjects();
+  }, []);
+
+  const fetchFinalDefenseProjects = async () => {
+    try {
+      setLoading(true);
+      // Fetch projects relevant to Final Phase
+      // We look for projects in Development Phase (ready to schedule) or Final Defense stages
+      const response = await fetch('http://localhost:5000/api/projects/evaluation-list/final');
+      const data = await response.json();
+      
+      // Note: Backend endpoint should return projects with status: 
+      // 'Development Phase', 'Final Defense Scheduled', 'Final Defense Pending', 'Project Completed'
+      console.log('Final defense projects:', data);
+      setProjects(data);
+    } catch (error) {
+      console.error('Error fetching projects:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSchedule = async () => {
+    if (!defenseDate) return alert('Please select a date');
+    try {
+      setProcessing(true);
+      const res = await fetch(`http://localhost:5000/api/projects/schedule-final-defense/${selectedProject._id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ date: defenseDate })
+      });
+      if(res.ok) {
+        alert("Final Defense Scheduled! 📅");
+        setSelectedProject(null);
+        setDefenseDate('');
+        fetchFinalDefenseProjects();
+      } else {
+        alert("Failed to schedule.");
+      }
+    } catch(err) { console.error(err); } finally { setProcessing(false); }
+  };
+
+  const handleGrade = async () => {
+    if (!marks || marks < 0 || marks > 30) return alert('Enter valid marks (0-30)');
+    try {
+      setProcessing(true);
+      const res = await fetch(`http://localhost:5000/api/projects/submit-final-marks/${selectedProject._id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role: 'coordinator', marks: marks })
+      });
+      if(res.ok) {
+        alert("Grade Submitted! 🎓");
+        setSelectedProject(null);
+        setMarks('');
+        fetchFinalDefenseProjects();
+      } else {
+        alert("Failed to submit grade.");
+      }
+    } catch(err) { console.error(err); } finally { setProcessing(false); }
+  };
+
+  if (loading) return <div className="p-10 text-white text-center">Loading...</div>;
+
+  return (
+    <div className="space-y-12">
+      <div>
+        <h1 className="text-3xl font-bold bg-gradient-to-r from-red-400 to-orange-400 bg-clip-text text-transparent">
+          Final Defense Management
+        </h1>
+        <p className="text-gray-400 mt-2">Schedule dates and grade the final 30% evaluation.</p>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        
+        {/* SECTION 1: SCHEDULING */}
+        <div className="bg-gray-800/50 rounded-2xl border border-gray-700 p-6">
+          <h2 className="text-xl font-bold text-white mb-4 flex items-center">
+            <Calendar className="mr-2 text-blue-400"/> Schedule Final Defense
+          </h2>
+          <div className="space-y-4">
+            {/* Filter projects that are ready but NOT yet scheduled */}
+            {projects.filter(p => !p.finalDefense?.scheduledDate && (p.status === 'Development Phase' || p.status.includes('Final'))).map(p => (
+              <div key={p._id} className="bg-gray-900 p-4 rounded-lg border border-gray-600 flex justify-between items-center">
+                <div>
+                  <h3 className="font-bold text-white">{p.leaderId?.name}</h3>
+                  <p className="text-sm text-gray-400">{p.leaderId?.enrollment}</p>
+                </div>
+                <button 
+                  onClick={() => setSelectedProject({...p, type: 'schedule'})}
+                  className="bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded text-sm text-white"
+                >
+                  Schedule
+                </button>
+              </div>
+            ))}
+            {projects.filter(p => !p.finalDefense?.scheduledDate && (p.status === 'Development Phase' || p.status.includes('Final'))).length === 0 && (
+              <p className="text-gray-500 text-center">No projects waiting for scheduling.</p>
+            )}
+          </div>
+        </div>
+
+        {/* SECTION 2: GRADING */}
+        <div className="bg-gray-800/50 rounded-2xl border border-gray-700 p-6">
+          <h2 className="text-xl font-bold text-white mb-4 flex items-center">
+            <GraduationCap className="mr-2 text-green-400"/> Final Grading (30%)
+          </h2>
+          <div className="space-y-4">
+            {/* Filter projects that ARE scheduled */}
+            {projects.filter(p => p.finalDefense?.scheduledDate).map(p => (
+              <div key={p._id} className="bg-gray-900 p-4 rounded-lg border border-gray-600">
+                <div className="flex justify-between items-start mb-2">
+                  <div>
+                    <h3 className="font-bold text-white">{p.leaderId?.name}</h3>
+                    <p className="text-xs text-gray-400">Date: {new Date(p.finalDefense.scheduledDate).toDateString()}</p>
+                  </div>
+                  {p.finalDefense?.marks?.coordinator ? (
+                    <span className="text-green-400 font-bold">{p.finalDefense.marks.coordinator}/30</span>
+                  ) : (
+                    <button 
+                      onClick={() => setSelectedProject({...p, type: 'grade'})}
+                      disabled={!p.finalDefense?.finalPptUrl} // Disable if PPT not uploaded
+                      className={`px-3 py-1 rounded text-sm text-white ${!p.finalDefense?.finalPptUrl ? 'bg-gray-600 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'}`}
+                    >
+                      Grade
+                    </button>
+                  )}
+                </div>
+                {p.finalDefense?.finalPptUrl ? (
+                   <a href={`http://localhost:5000/${p.finalDefense.finalPptUrl}`} target="_blank" rel="noopener noreferrer" className="text-blue-400 text-xs underline">Download Final PPT</a>
+                ) : <span className="text-yellow-500 text-xs">PPT Pending from Student</span>}
+              </div>
+            ))}
+             {projects.filter(p => p.finalDefense?.scheduledDate).length === 0 && (
+              <p className="text-gray-500 text-center">No scheduled projects.</p>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* MODAL */}
+      {selectedProject && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
+          <div className="bg-gray-800 p-6 rounded-xl w-96 border border-gray-600">
+            <h3 className="text-xl font-bold text-white mb-4">
+              {selectedProject.type === 'schedule' ? 'Set Defense Date' : 'Enter Final Marks'}
+            </h3>
+            
+            {selectedProject.type === 'schedule' ? (
+              <input 
+                type="datetime-local" 
+                className="w-full p-2 bg-gray-900 text-white rounded mb-4"
+                onChange={(e) => setDefenseDate(e.target.value)}
+                min={new Date().toISOString().slice(0, 16)}
+              />
+            ) : (
+              <div>
+                <input 
+                  type="number" 
+                  className="w-full p-2 bg-gray-900 text-white rounded mb-2"
+                  placeholder="Marks (0-30)"
+                  max="30"
+                  onChange={(e) => setMarks(e.target.value)}
+                />
+                <p className="text-xs text-gray-400 mb-4">Weightage: 30% of Total Grade</p>
+              </div>
+            )}
+
+            <div className="flex gap-2 justify-end">
+              <button onClick={() => setSelectedProject(null)} className="px-4 py-2 bg-gray-600 rounded text-white">Cancel</button>
+              <button 
+                onClick={selectedProject.type === 'schedule' ? handleSchedule : handleGrade}
+                disabled={processing}
+                className="px-4 py-2 bg-blue-600 rounded text-white font-bold"
+              >
+                {processing ? 'Processing...' : 'Confirm'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
 
 // ============================================
 // INITIAL DEFENSE EVALUATION COMPONENT
@@ -26,13 +228,13 @@ export const InitialDefenseEvaluation = () => {
   const [marks, setMarks] = useState('');
   const [feedback, setFeedback] = useState('');
   const [processing, setProcessing] = useState(false);
-  
+   
 
   useEffect(() => {
     fetchInitialDefenseProjects();
   }, []);
 
-  
+   
 
   const fetchInitialDefenseProjects = async () => {
     try {
@@ -48,7 +250,7 @@ export const InitialDefenseEvaluation = () => {
     }
   };
 
-  
+   
 
   const handleSubmitMarks = async () => {
     if (!marks || marks < 0 || marks > 5) {
@@ -629,12 +831,12 @@ const FypCoordinator = () => {
 
   useEffect(() => {
     const userInfo = JSON.parse(localStorage.getItem('userInfo'));
-    
+     
     if (!userInfo || userInfo.role !== 'coordinator') {
       navigate('/');
       return;
     }
-    
+     
     setCoordinator(userInfo);
   }, [navigate]);
 
@@ -741,6 +943,13 @@ const FypCoordinator = () => {
                 onClick={() => navigate('/coordinator/srs-sds-evaluation')}
                 collapsed={!sidebarOpen}
               />
+              {/* NEW SIDEBAR ITEM */}
+              <SidebarButton 
+                icon={<GraduationCap className="w-5 h-5" />} 
+                label="Final Defense" 
+                onClick={() => navigate('/coordinator/final-defense')}
+                collapsed={!sidebarOpen}
+              />
             </div>
           </nav>
         </div>
@@ -829,7 +1038,7 @@ export const Dashboard = () => {
 
     try {
       setProcessing(true);
-      
+       
       let response;
       if (status === 'Approved') {
         response = await fetch(`http://localhost:5000/api/projects/assign-supervisor/${projectId}`, {
@@ -1175,11 +1384,11 @@ export const AllProjects = () => {
       setLoading(true);
       const response = await fetch('http://localhost:5000/api/projects/defense-pending');
       const data = await response.json();
-      
+       
       // Also fetch pending proposals
       const pendingResponse = await fetch('http://localhost:5000/api/projects/pending');
       const pendingData = await pendingResponse.json();
-      
+       
       // Combine all projects
       const allProjects = [...data, ...pendingData];
       console.log('All projects:', allProjects);
@@ -1207,7 +1416,7 @@ export const AllProjects = () => {
 
   const filteredProjects = projects.filter(project => {
     const matchesSearch = project.leaderId?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         project.leaderId?.enrollment?.toLowerCase().includes(searchTerm.toLowerCase());
+                          project.leaderId?.enrollment?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesFilter = filterStatus === 'All' || project.status === filterStatus;
     return matchesSearch && matchesFilter;
   });

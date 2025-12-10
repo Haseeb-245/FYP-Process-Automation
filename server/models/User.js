@@ -19,7 +19,8 @@ const userSchema = new mongoose.Schema(
 
     role: {
       type: String,
-      enum: ["student", "coordinator", "supervisor", "board"],
+      // Added 'external' to the enum list
+      enum: ["student", "coordinator", "supervisor", "board", "external"],
       default: "student",
     },
 

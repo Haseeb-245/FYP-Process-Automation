@@ -6,17 +6,25 @@ const SupervisorDashboard = () => {
   const [supervisor, setSupervisor] = useState(null);
   const [pendingConsents, setPendingConsents] = useState([]);
   const [loading, setLoading] = useState(true);
+  
+  // Consent Form State
   const [selectedProject, setSelectedProject] = useState(null);
   const [feedback, setFeedback] = useState('');
   const [processing, setProcessing] = useState(false);
   const [signatureName, setSignatureName] = useState('');
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   
-  // State for initial defense projects
+  // Evaluation States
   const [initialDefenseProjects, setInitialDefenseProjects] = useState([]);
-  
-  // State for SRS/SDS review projects
   const [srsSdsReviewProjects, setSrsSdsReviewProjects] = useState([]);
+  
+  // Phase 4 & 5 States
+  const [developmentProjects, setDevelopmentProjects] = useState([]);
+  const [finalDefenseProjects, setFinalDefenseProjects] = useState([]);
+  
+  // Log Writing State
+  const [logContent, setLogContent] = useState('');
+  const [activeLogId, setActiveLogId] = useState(null); // { projectId, weekNumber }
 
   useEffect(() => {
     const userInfo = JSON.parse(localStorage.getItem('userInfo'));
@@ -35,848 +43,419 @@ const SupervisorDashboard = () => {
   const fetchAllData = async (supervisorId) => {
     try {
       setLoading(true);
-      console.log('🔍 Fetching data for supervisor:', supervisorId);
       
-      // Fetch all data in parallel
       const [
-        consentsResponse,
-        initialDefenseResponse,
-        srsSdsReviewResponse
+        consentsRes,
+        initialDefenseRes,
+        srsSdsRes
       ] = await Promise.all([
         fetch(`http://localhost:5000/api/projects/supervisor-pending/${supervisorId}`),
         fetch(`http://localhost:5000/api/projects/supervisor-initial-defense/${supervisorId}`),
+        // Ensure your backend 'supervisor-srs-sds-review' route fetches statuses: 
+        // 'Development Phase', 'Final Defense Scheduled', etc.
         fetch(`http://localhost:5000/api/projects/supervisor-srs-sds-review/${supervisorId}`)
       ]);
 
-      // Log responses
-      console.log('Consents response status:', consentsResponse.status);
-      console.log('Initial Defense response status:', initialDefenseResponse.status);
-      console.log('SRS/SDS Review response status:', srsSdsReviewResponse.status);
+      if (consentsRes.ok) setPendingConsents(await consentsRes.json());
+      if (initialDefenseRes.ok) setInitialDefenseProjects(await initialDefenseRes.json());
 
-      // Process consents
-      if (consentsResponse.ok) {
-        const consentsData = await consentsResponse.json();
-        console.log('Consents data:', consentsData);
-        setPendingConsents(consentsData);
-      } else {
-        console.error('Consents fetch failed:', await consentsResponse.text());
-      }
-
-      // Process initial defense
-      if (initialDefenseResponse.ok) {
-        const initialDefenseData = await initialDefenseResponse.json();
-        console.log('Initial defense data:', initialDefenseData);
-        setInitialDefenseProjects(initialDefenseData);
-      } else {
-        console.error('Initial defense fetch failed:', await initialDefenseResponse.text());
-      }
-
-      // Process SRS/SDS review
-      if (srsSdsReviewResponse.ok) {
-        const srsSdsData = await srsSdsReviewResponse.json();
-        console.log('SRS/SDS review data:', srsSdsData);
-        
-        // Filter for projects that need supervisor decision
-        const pendingReview = srsSdsData.filter(project => 
-          project.srsSdsStatus === 'Pending Review' || 
-          project.srsSdsStatus === null ||
-          !project.srsSdsStatus
-        );
-        console.log('Pending SRS/SDS review projects:', pendingReview);
-        setSrsSdsReviewProjects(pendingReview);
-      } else {
-        const errorText = await srsSdsReviewResponse.text();
-        console.error('SRS/SDS review fetch failed:', errorText);
-        if (srsSdsReviewResponse.status === 404) {
-          console.error('❌ Route not found! Check backend route definition.');
-        }
+      if (srsSdsRes.ok) {
+          const data = await srsSdsRes.json();
+          // Filter for SRS/SDS Review
+          setSrsSdsReviewProjects(data.filter(p => p.srsSdsStatus === 'Pending Review' || p.srsSdsStatus === 'Under Review' || p.status === 'Ready for SRS/SDS Review'));
+          
+          // Filter for Phase 4 (Development)
+          setDevelopmentProjects(data.filter(p => p.status === 'Development Phase'));
+          
+          // Filter for Phase 5 (Final Defense)
+          setFinalDefenseProjects(data.filter(p => p.status.includes('Final Defense') || p.status === 'Project Completed'));
       }
 
     } catch (error) {
       console.error('Error fetching data:', error);
-      alert(`Failed to fetch data: ${error.message}`);
     } finally {
       setLoading(false);
     }
   };
 
-  // Handler for SRS/SDS decision
-  const handleSrsSdsDecision = async (projectId, decision) => {
-    const feedbackInput = document.getElementById(`feedback-${projectId}`)?.value || '';
-    
-    console.log('📝 SRS/SDS Decision:', { projectId, decision, feedback: feedbackInput });
-    
-    if (decision !== 'Approved' && !feedbackInput.trim()) {
-      alert('Please provide feedback when rejecting or requesting changes');
-      return;
-    }
-
-    try {
-      setProcessing(true);
-      
-      const requestBody = {
-        decision: decision,
-        feedback: feedbackInput || undefined
-      };
-      
-      console.log('Sending request body:', requestBody);
-      
-      const response = await fetch(`http://localhost:5000/api/projects/supervisor-srs-sds-decision/${projectId}`, {
-        method: 'PUT',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        body: JSON.stringify(requestBody)
-      });
-
-      console.log('Response status:', response.status);
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('API Error Response:', errorText);
-        
-        try {
-          const errorData = JSON.parse(errorText);
-          throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
-        } catch {
-          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
-      }
-
-      const data = await response.json();
-      console.log('Success response:', data);
-      
-      alert(`✅ SRS/SDS ${decision}`);
-      fetchAllData(supervisor._id);
-      
-    } catch (error) {
-      console.error('Error processing SRS/SDS decision:', error);
-      alert(`Failed to process decision: ${error.message}`);
-    } finally {
-      setProcessing(false);
-    }
+  // --- HELPER: Fix Windows File Paths ---
+  const getFileUrl = (path) => {
+    if (!path) return '#';
+    // Replace backslashes with forward slashes for URL compatibility
+    const cleanPath = path.replace(/\\/g, '/');
+    return `http://localhost:5000/${cleanPath}`;
   };
 
-  // Handler for initial defense evaluation
-  const handleInitialDefenseEvaluation = async (projectId) => {
-    const marksInput = document.getElementById(`marks-${projectId}`)?.value;
-    const feedbackInput = document.getElementById(`feedback-${projectId}`)?.value || '';
-    
-    console.log('🎯 Initial Defense Evaluation:', { projectId, marks: marksInput, feedback: feedbackInput });
-    
-    if (!marksInput || marksInput < 0 || marksInput > 5) {
-      alert('Please enter valid marks between 0 and 5');
-      return;
-    }
-
-    try {
-      setProcessing(true);
-      
-      const requestBody = {
-        role: 'supervisor',
-        marks: parseFloat(marksInput),
-        feedback: feedbackInput || undefined
-      };
-      
-      console.log('Sending request body:', requestBody);
-      
-      const response = await fetch(`http://localhost:5000/api/projects/submit-initial-defense-marks/${projectId}`, {
-        method: 'PUT',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        body: JSON.stringify(requestBody)
-      });
-
-      console.log('Response status:', response.status);
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('API Error Response:', errorText);
-        
-        try {
-          const errorData = JSON.parse(errorText);
-          throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
-        } catch {
-          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
-      }
-
-      const data = await response.json();
-      console.log('Success response:', data);
-      
-      alert('✅ Marks submitted successfully!');
-      if (data.allMarksGiven) {
-        alert('🎉 All evaluations received! Project moved to next phase.');
-      }
-      fetchAllData(supervisor._id);
-      
-    } catch (error) {
-      console.error('Error submitting marks:', error);
-      alert(`Failed to submit marks: ${error.message}`);
-    } finally {
-      setProcessing(false);
-    }
-  };
-
-  // Handler for SRS/SDS evaluation marks
-  const handleSrsSdsEvaluation = async (projectId) => {
-    const marksInput = document.getElementById(`srs-sds-marks-${projectId}`)?.value;
-    const feedbackInput = document.getElementById(`srs-sds-feedback-${projectId}`)?.value || '';
-    
-    console.log('📋 SRS/SDS Evaluation:', { projectId, marks: marksInput, feedback: feedbackInput });
-    
-    if (!marksInput || marksInput < 0 || marksInput > 5) {
-      alert('Please enter valid marks between 0 and 5');
-      return;
-    }
-
-    try {
-      setProcessing(true);
-      
-      const requestBody = {
-        role: 'supervisor',
-        marks: parseFloat(marksInput),
-        feedback: feedbackInput || undefined
-      };
-      
-      console.log('Sending request body:', requestBody);
-      
-      const response = await fetch(`http://localhost:5000/api/projects/submit-srs-sds-marks/${projectId}`, {
-        method: 'PUT',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        body: JSON.stringify(requestBody)
-      });
-
-      console.log('Response status:', response.status);
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('API Error Response:', errorText);
-        
-        try {
-          const errorData = JSON.parse(errorText);
-          throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
-        } catch {
-          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
-      }
-
-      const data = await response.json();
-      console.log('Success response:', data);
-      
-      alert('✅ SRS/SDS Evaluation Submitted Successfully!');
-      if (data.allMarksGiven) {
-        alert('🎉 All SRS/SDS evaluations received! Project moved to Development Phase.');
-      }
-      fetchAllData(supervisor._id);
-      
-    } catch (error) {
-      console.error('Error submitting SRS/SDS marks:', error);
-      alert(`Failed to submit evaluation: ${error.message}`);
-    } finally {
-      setProcessing(false);
-    }
-  };
-
-  // Debug function to test backend routes
-  const testBackendRoutes = async () => {
-    if (!supervisor) return;
-    
-    console.log('🔧 Testing backend routes...');
-    
-    const testUrls = [
-      `http://localhost:5000/api/projects/supervisor-srs-sds-review/${supervisor._id}`,
-      'http://localhost:5000/api/projects/supervisor-srs-sds-decision/test-id',
-      'http://localhost:5000/api/projects/submit-srs-sds-marks/test-id',
-      'http://localhost:5000/api/projects/submit-initial-defense-marks/test-id'
-    ];
-    
-    for (const url of testUrls) {
-      try {
-        console.log(`Testing: ${url}`);
-        const response = await fetch(url, { method: 'GET' });
-        console.log(`${url} - Status: ${response.status}`);
-      } catch (error) {
-        console.error(`${url} - Error: ${error.message}`);
-      }
-    }
-  };
+  // --- ACTIONS ---
 
   const handleDecision = async (projectId, decision) => {
-    // Validation for approval
     if (decision === 'Approved') {
-      if (!signatureName.trim()) {
-        alert('Please enter your signature name');
-        return;
-      }
-      if (!agreedToTerms) {
-        alert('Please agree to the supervision commitment terms');
-        return;
-      }
-    }
-
-    const action = decision === 'Approved' ? 'sign the consent form and approve' : 'reject';
-    if (!window.confirm(`Are you sure you want to ${action} this project?`)) {
-      return;
+      if (!signatureName.trim()) return alert('Please enter your signature name');
+      if (!agreedToTerms) return alert('Please agree to the supervision commitment terms');
     }
 
     try {
       setProcessing(true);
       const response = await fetch(`http://localhost:5000/api/projects/supervisor-decision/${projectId}`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           decision: decision,
           feedback: feedback || undefined,
-          signature: decision === 'Approved' ? signatureName : undefined,
-          signedAt: decision === 'Approved' ? new Date().toISOString() : undefined
+          signature: decision === 'Approved' ? signatureName : undefined
         }),
       });
 
-      const data = await response.json();
-
       if (response.ok) {
-        if (decision === 'Approved') {
-          alert('✅ Consent Form Signed Successfully!\n\nThe student has been notified that you have accepted to supervise their project.');
-        } else {
-          alert('❌ Project Rejected!\n\nThe student and coordinator have been notified of your decision.');
-        }
+        alert(decision === 'Approved' ? '✅ Consent Signed!' : '❌ Project Rejected');
         setSelectedProject(null);
         setFeedback('');
-        setSignatureName(supervisor.name);
         setAgreedToTerms(false);
         fetchAllData(supervisor._id);
       } else {
-        alert(data.message || 'Failed to process decision');
+        alert('Failed to process decision');
       }
     } catch (error) {
-      console.error('Error processing decision:', error);
+      console.error(error);
       alert('Server error');
     } finally {
       setProcessing(false);
     }
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('userInfo');
-    navigate('/');
+  const handleInitialDefenseEvaluation = async (projectId) => {
+    const marksInput = document.getElementById(`marks-${projectId}`)?.value;
+    const feedbackInput = document.getElementById(`feedback-${projectId}`)?.value || '';
+    
+    if (!marksInput || marksInput < 0 || marksInput > 5) return alert('Enter valid marks (0-5)');
+
+    try {
+      setProcessing(true);
+      const response = await fetch(`http://localhost:5000/api/projects/submit-initial-defense-marks/${projectId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role: 'supervisor', marks: parseFloat(marksInput), feedback: feedbackInput })
+      });
+
+      if (response.ok) {
+        alert('✅ Marks submitted successfully!');
+        fetchAllData(supervisor._id);
+      } else {
+        alert('Failed to submit marks');
+      }
+    } catch (error) { console.error(error); } finally { setProcessing(false); }
   };
 
-  if (!supervisor) {
-    return <div className="text-white p-10">Loading...</div>;
-  }
+  const handleAcceptMeeting = async (projectId, weekNumber) => {
+      try {
+          const res = await fetch(`http://localhost:5000/api/projects/accept-meeting/${projectId}`, {
+              method: 'PUT',
+              headers: {'Content-Type': 'application/json'},
+              body: JSON.stringify({ weekNumber })
+          });
+          if(res.ok) {
+              alert("Meeting Accepted! ✅");
+              fetchAllData(supervisor._id);
+          }
+      } catch (error) { console.error(error); }
+  };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 to-black flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
+  const handleWriteLog = async (projectId, weekNumber) => {
+      if(!logContent.trim()) return alert("Please write log content");
+      try {
+          const res = await fetch(`http://localhost:5000/api/projects/write-weekly-log/${projectId}`, {
+              method: 'PUT',
+              headers: {'Content-Type': 'application/json'},
+              body: JSON.stringify({ weekNumber, content: logContent })
+          });
+          if(res.ok) {
+              alert("Log Saved! ✅");
+              setActiveLogId(null);
+              setLogContent("");
+              fetchAllData(supervisor._id);
+          }
+      } catch (error) { console.error(error); }
+  };
+
+  const handleSubmitFinalMark = async (projectId) => {
+      const mark = document.getElementById(`final-mark-${projectId}`).value;
+      if(!mark || mark < 0 || mark > 30) return alert("Please enter valid marks (0-30)");
+      
+      try {
+          const res = await fetch(`http://localhost:5000/api/projects/submit-final-marks/${projectId}`, {
+              method: 'PUT',
+              headers: {'Content-Type': 'application/json'},
+              body: JSON.stringify({ role: 'supervisor', marks: mark })
+          });
+          if(res.ok) {
+              alert("Final Grade Submitted! 🏆");
+              fetchAllData(supervisor._id);
+          }
+      } catch (error) { console.error(error); }
+  };
+
+  const handleSrsSdsDecision = async (projectId, decision) => {
+    const feedbackInput = document.getElementById(`feedback-${projectId}`)?.value || '';
+    if (decision !== 'Approved' && !feedbackInput.trim()) return alert('Please provide feedback');
+    try {
+      setProcessing(true);
+      await fetch(`http://localhost:5000/api/projects/supervisor-srs-sds-decision/${projectId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ decision, feedback: feedbackInput })
+      });
+      alert(`✅ SRS/SDS ${decision}`);
+      fetchAllData(supervisor._id);
+    } catch (error) { console.error(error); } finally { setProcessing(false); }
+  };
+
+  const handleSrsSdsEvaluation = async (projectId) => {
+    const marksInput = document.getElementById(`srs-sds-marks-${projectId}`)?.value;
+    const feedbackInput = document.getElementById(`srs-sds-feedback-${projectId}`)?.value || '';
+    if (!marksInput || marksInput < 0 || marksInput > 5) return alert('Enter valid marks (0-5)');
+
+    try {
+      setProcessing(true);
+      await fetch(`http://localhost:5000/api/projects/submit-srs-sds-marks/${projectId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role: 'supervisor', marks: parseFloat(marksInput), feedback: feedbackInput })
+      });
+      alert('✅ Evaluation Submitted!');
+      fetchAllData(supervisor._id);
+    } catch (error) { console.error(error); } finally { setProcessing(false); }
+  };
+
+  if (!supervisor) return <div className="text-white p-10">Loading...</div>;
+  if (loading) return <div className="min-h-screen bg-black flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div></div>;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 to-black text-white">
-      {/* Header */}
-      <header className="bg-gray-800 shadow-lg">
+      <header className="bg-gray-800 shadow-lg border-b border-gray-700">
         <div className="container mx-auto px-6 py-4 flex justify-between items-center">
-          <div>
-            <h1 className="text-2xl font-bold">Supervisor Dashboard</h1>
-            <p className="text-gray-400">Welcome, {supervisor.name}</p>
-          </div>
-          <div className="flex space-x-2">
-            <button
-              onClick={testBackendRoutes}
-              className="bg-yellow-600 hover:bg-yellow-700 px-4 py-2 rounded transition-colors text-sm"
-            >
-              🔧 Test Routes
-            </button>
-            <button
-              onClick={() => fetchAllData(supervisor._id)}
-              className="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded transition-colors text-sm"
-            >
-              🔄 Refresh
-            </button>
-            <button
-              onClick={handleLogout}
-              className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded transition-colors"
-            >
-              Logout
-            </button>
-          </div>
+          <h1 className="text-2xl font-bold">Supervisor Dashboard</h1>
+          <button onClick={() => fetchAllData(supervisor._id)} className="bg-blue-600 px-4 py-2 rounded text-sm font-bold">Refresh</button>
         </div>
       </header>
 
-      {/* Main Content */}
-      <div className="container mx-auto px-6 py-8">
-        <div className="mb-8">
-          <h2 className="text-3xl font-bold mb-2">Supervisor Dashboard</h2>
-          <p className="text-gray-400">Manage student projects, evaluations, and reviews</p>
-        </div>
-
-        {/* Debug Info Panel */}
-        <div className="bg-gray-800 p-4 rounded-lg mb-6 border border-yellow-500">
-          <h3 className="text-yellow-400 font-bold mb-2">⚠️ Debug Information</h3>
-          <p className="text-sm text-gray-300">
-            Supervisor ID: <code className="bg-gray-900 px-2 py-1 rounded">{supervisor._id}</code>
-          </p>
-          <p className="text-sm text-gray-300 mt-1">
-            Pending Consents: {pendingConsents.length} | 
-            Initial Defense: {initialDefenseProjects.length} | 
-            SRS/SDS Review: {srsSdsReviewProjects.length}
-          </p>
-        </div>
-
-        {/* Pending Consent Requests */}
-        <div className="mb-12">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h2 className="text-2xl font-bold mb-2">Pending Consent Requests</h2>
-              <p className="text-gray-400">Review and sign consent forms for student project proposals</p>
-            </div>
-            <div className="bg-gray-800 p-4 rounded-lg border-l-4 border-yellow-500">
-              <div className="text-3xl font-bold">{pendingConsents.length}</div>
-              <div className="text-gray-400">Pending</div>
-            </div>
-          </div>
-
-          {pendingConsents.length === 0 ? (
-            <div className="bg-gray-800 rounded-lg shadow p-12 text-center">
-              <div className="text-6xl mb-4">✅</div>
-              <h3 className="text-xl font-semibold mb-2">No Pending Requests</h3>
-              <p className="text-gray-400">All consent requests have been processed!</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {pendingConsents.map((project) => (
-                <div key={project._id} className="bg-gray-800 rounded-lg shadow-lg overflow-hidden border border-gray-700 hover:border-blue-500 transition-all">
-                  <div className="p-6">
-                    <div className="flex items-center justify-between mb-4">
-                      <span className="px-3 py-1 bg-yellow-500 text-black text-xs font-semibold rounded-full">
-                        ⏳ Awaiting Signature
-                      </span>
-                    </div>
-                    
-                    <h3 className="text-xl font-bold mb-3">{project.leaderId?.name}</h3>
-                    
-                    <div className="space-y-2 text-sm mb-4">
-                      <div className="flex items-center text-gray-400">
-                        <span className="font-semibold mr-2">Enrollment:</span>
-                        <span>{project.leaderId?.enrollment}</span>
-                      </div>
-                      <div className="flex items-center text-gray-400">
-                        <span className="font-semibold mr-2">Email:</span>
-                        <span className="truncate">{project.leaderId?.email || 'N/A'}</span>
-                      </div>
-                      {project.proposedSupervisorName && (
-                        <div className="flex items-center text-gray-400">
-                          <span className="font-semibold mr-2">Proposed:</span>
-                          <span>{project.proposedSupervisorName}</span>
+      <div className="container mx-auto px-6 py-8 space-y-12">
+        
+        {/* 1. PENDING CONSENTS */}
+        {pendingConsents.length > 0 && (
+            <section>
+                <h2 className="text-2xl font-bold mb-4 flex items-center"><span className="mr-2">📝</span> Pending Consents</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {pendingConsents.map(p => (
+                        <div key={p._id} className="bg-gray-800 p-6 rounded-lg border border-yellow-500/50">
+                            <h3 className="font-bold text-lg">{p.leaderId?.name}</h3>
+                            <p className="text-gray-400 text-sm mb-4">{p.leaderId?.enrollment}</p>
+                            <button onClick={() => setSelectedProject(p)} className="w-full bg-yellow-600 hover:bg-yellow-700 py-2 rounded text-white font-bold">
+                                Review Proposal
+                            </button>
                         </div>
-                      )}
-                    </div>
-
-                    {project.coordinatorFeedback && (
-                      <div className="mb-4 p-3 bg-gray-900 rounded">
-                        <p className="text-xs font-semibold text-gray-400 mb-1">📝 Coordinator's Note:</p>
-                        <p className="text-sm text-gray-300">{project.coordinatorFeedback}</p>
-                      </div>
-                    )}
-                    
-                    <button
-                      onClick={() => setSelectedProject(project)}
-                      className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 rounded transition-colors"
-                    >
-                      📋 Review & Sign Consent
-                    </button>
-                  </div>
+                    ))}
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
+            </section>
+        )}
 
-        {/* SRS/SDS Review Section */}
-        {srsSdsReviewProjects.length > 0 && (
-          <div className="mb-12">
-            <h2 className="text-2xl font-bold mb-6 text-purple-400">SRS/SDS Document Review</h2>
-            <p className="text-gray-400 mb-4">Review student's SRS and SDS documents before evaluation</p>
+        {/* 2. INITIAL DEFENSE EVALUATIONS */}
+        {initialDefenseProjects.length > 0 && (
+          <section>
+            <h2 className="text-2xl font-bold mb-4 flex items-center text-green-400">🎤 Initial Defense Evaluations</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {srsSdsReviewProjects.map((project) => (
-                <div key={project._id} className="bg-gray-800 rounded-lg shadow-lg p-6 border border-purple-700">
-                  <h3 className="text-xl font-bold mb-3">{project.leaderId?.name}</h3>
-                  <p className="text-gray-400 mb-2">Enrollment: {project.leaderId?.enrollment}</p>
+              {initialDefenseProjects.map((project) => (
+                <div key={project._id} className="bg-gray-800 rounded-lg shadow-lg p-6 border border-green-700">
+                  <h3 className="text-xl font-bold mb-1">{project.leaderId?.name}</h3>
+                  <p className="text-gray-400 text-sm mb-4">{project.leaderId?.enrollment}</p>
                   
-                  <div className="space-y-3 mb-4">
-                    {project.srsUrl && (
-                      <a
-                        href={`http://localhost:5000/${project.srsUrl}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="block px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors text-sm text-center"
-                      >
-                        📥 Download SRS Document
-                      </a>
-                    )}
-                    {project.sdsUrl && (
-                      <a
-                        href={`http://localhost:5000/${project.sdsUrl}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="block px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors text-sm text-center"
-                      >
-                        📥 Download SDS Document
-                      </a>
-                    )}
-                  </div>
+                  {project.presentationUrl ? (
+                    <a
+                      href={getFileUrl(project.presentationUrl)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block w-full text-center mb-4 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded font-bold transition-colors"
+                    >
+                      📥 Download Presentation (PPT)
+                    </a>
+                  ) : (
+                    <div className="mb-4 p-2 bg-gray-700 rounded text-center text-gray-400 text-sm">No PPT Uploaded</div>
+                  )}
                   
-                  <div className="space-y-3">
-                    <textarea
-                      id={`feedback-${project._id}`}
-                      placeholder="Your feedback (required for rejection/changes)"
-                      className="w-full p-3 bg-gray-900 border border-gray-700 text-white rounded text-sm"
-                      rows="3"
-                    />
-                    <div className="grid grid-cols-2 gap-2">
-                      <button
-                        onClick={() => handleSrsSdsDecision(project._id, 'Approved')}
-                        disabled={processing}
-                        className="bg-green-600 hover:bg-green-700 text-white font-medium py-2 rounded transition-colors disabled:opacity-50"
-                      >
-                        {processing ? 'Processing...' : '✅ Accept for Evaluation'}
-                      </button>
-                      <button
-                        onClick={() => handleSrsSdsDecision(project._id, 'Rejected')}
-                        disabled={processing}
-                        className="bg-red-600 hover:bg-red-700 text-white font-medium py-2 rounded transition-colors disabled:opacity-50"
-                      >
-                        {processing ? 'Processing...' : '❌ Reject'}
-                      </button>
+                  {project.initialDefenseMarks?.supervisor !== null && project.initialDefenseMarks?.supervisor !== undefined ? (
+                    <div className="p-3 bg-green-900/30 rounded border border-green-500 text-center">
+                      <p className="text-green-300 font-bold">✅ Evaluated</p>
+                      <p className="text-white">Marks: {project.initialDefenseMarks.supervisor}/5</p>
                     </div>
-                  </div>
-                  
-                  {/* SRS/SDS Evaluation Form (for after acceptance) */}
-                  {project.srsSdsStatus === 'Under Review' && (
-                    <div className="mt-6 pt-6 border-t border-gray-700">
-                      <h4 className="font-bold mb-3 text-green-400">Provide Evaluation Marks</h4>
-                      <input
-                        type="number"
-                        id={`srs-sds-marks-${project._id}`}
-                        min="0"
-                        max="5"
-                        step="0.5"
-                        placeholder="Enter marks (0-5)"
-                        className="w-full p-3 bg-gray-900 border border-gray-700 text-white rounded mb-2"
-                      />
-                      <textarea
-                        id={`srs-sds-feedback-${project._id}`}
-                        placeholder="Evaluation feedback (optional)"
-                        className="w-full p-3 bg-gray-900 border border-gray-700 text-white rounded text-sm mb-3"
-                        rows="2"
-                      />
-                      <button
-                        onClick={() => handleSrsSdsEvaluation(project._id)}
-                        disabled={processing}
-                        className="w-full bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-medium py-3 rounded transition-colors disabled:opacity-50"
-                      >
-                        {processing ? 'Submitting...' : '📝 Submit SRS/SDS Evaluation (5%)'}
-                      </button>
+                  ) : (
+                    <div className="space-y-3">
+                      <input type="number" id={`marks-${project._id}`} min="0" max="5" step="0.5" placeholder="Marks (0-5)" className="w-full p-2 bg-gray-900 border border-gray-600 rounded text-white"/>
+                      <textarea id={`feedback-${project._id}`} placeholder="Feedback (Optional)" className="w-full p-2 bg-gray-900 border border-gray-600 rounded text-white" rows="2"></textarea>
+                      <button onClick={() => handleInitialDefenseEvaluation(project._id)} disabled={processing} className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 rounded">Submit Evaluation</button>
                     </div>
                   )}
                 </div>
               ))}
             </div>
-          </div>
+          </section>
         )}
 
-        {/* Initial Defense Evaluation Section */}
-        {initialDefenseProjects.length > 0 && (
-          <div className="mb-12">
-            <h2 className="text-2xl font-bold mb-6 text-green-400">Initial Defense Evaluations</h2>
-            <p className="text-gray-400 mb-4">Evaluate your assigned student's PPT presentation (5% weightage)</p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {initialDefenseProjects.map((project) => {
-                const marks = project.initialDefenseMarks || {};
-                return (
-                  <div key={project._id} className="bg-gray-800 rounded-lg shadow-lg p-6 border border-green-700">
-                    <h3 className="text-xl font-bold mb-3">{project.leaderId?.name}</h3>
-                    <p className="text-gray-400 mb-2">Enrollment: {project.leaderId?.enrollment}</p>
-                    
-                    <div className="mb-4">
-                      {project.presentationUrl && (
-                        <a
-                          href={`http://localhost:5000/${project.presentationUrl}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-block px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors text-sm"
-                        >
-                          📥 Download Presentation
-                        </a>
-                      )}
-                    </div>
-                    
-                    {marks.supervisor !== null ? (
-                      <div className="p-3 bg-green-900/30 rounded border border-green-500">
-                        <p className="text-green-300 font-bold">✅ Already Evaluated</p>
-                        <p className="text-white font-bold">Marks: {marks.supervisor}/5</p>
-                        {project.initialDefenseMarks?.feedback && (
-                          <p className="text-gray-300 text-sm mt-2">Feedback: {project.initialDefenseMarks.feedback}</p>
-                        )}
-                      </div>
-                    ) : (
-                      <div className="space-y-3">
-                        <input
-                          type="number"
-                          id={`marks-${project._id}`}
-                          min="0"
-                          max="5"
-                          step="0.5"
-                          placeholder="Enter marks (0-5)"
-                          className="w-full p-3 bg-gray-900 border border-gray-700 text-white rounded"
-                        />
-                        <textarea
-                          id={`feedback-${project._id}`}
-                          placeholder="Feedback (optional)"
-                          className="w-full p-3 bg-gray-900 border border-gray-700 text-white rounded text-sm"
-                          rows="2"
-                        />
-                        <button
-                          onClick={() => handleInitialDefenseEvaluation(project._id)}
-                          disabled={processing}
-                          className="w-full bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-medium py-3 rounded transition-colors disabled:opacity-50"
-                        >
-                          {processing ? 'Submitting...' : '📝 Submit Evaluation (5%)'}
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
+        {/* 3. SRS/SDS REVIEW */}
+        {srsSdsReviewProjects.length > 0 && (
+            <section>
+                <h2 className="text-2xl font-bold mb-4 flex items-center"><span className="mr-2">📋</span> SRS/SDS Reviews</h2>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {srsSdsReviewProjects.map(p => (
+                        <div key={p._id} className="bg-gray-800 p-6 rounded-lg border border-purple-500/50">
+                            <h3 className="font-bold text-lg">{p.leaderId?.name}</h3>
+                            <div className="flex gap-2 my-3">
+                                {p.srsUrl && <a href={getFileUrl(p.srsUrl)} target="_blank" className="text-blue-400 text-sm underline">View SRS</a>}
+                                {p.sdsUrl && <a href={getFileUrl(p.sdsUrl)} target="_blank" className="text-blue-400 text-sm underline">View SDS</a>}
+                            </div>
+                            
+                            {p.srsSdsStatus === 'Under Review' ? (
+                                p.srsSdsReviewMarks?.supervisor ? (
+                                    <div className="bg-green-900/30 p-2 rounded text-center text-green-300 font-bold border border-green-500">
+                                        ✅ Graded: {p.srsSdsReviewMarks.supervisor}/5
+                                    </div>
+                                ) : (
+                                    <div className="space-y-2 mt-4 border-t border-gray-700 pt-4">
+                                        <p className="text-sm font-bold text-green-400">Evaluate Documents (5%)</p>
+                                        <input type="number" id={`srs-sds-marks-${p._id}`} placeholder="Marks (0-5)" className="w-full bg-gray-900 p-2 rounded text-white"/>
+                                        <textarea id={`srs-sds-feedback-${p._id}`} placeholder="Feedback..." className="w-full bg-gray-900 p-2 rounded text-white" rows="2"></textarea>
+                                        <button onClick={() => handleSrsSdsEvaluation(p._id)} className="w-full bg-green-600 py-2 rounded font-bold">Submit Marks</button>
+                                    </div>
+                                )
+                            ) : (
+                                <div className="space-y-2">
+                                    <textarea id={`feedback-${p._id}`} placeholder="Review Feedback..." className="w-full bg-gray-900 p-2 rounded text-white text-sm" rows="2"></textarea>
+                                    <div className="flex gap-2">
+                                        <button onClick={() => handleSrsSdsDecision(p._id, 'Approved')} className="flex-1 bg-green-600 py-2 rounded font-bold text-sm">Approve</button>
+                                        <button onClick={() => handleSrsSdsDecision(p._id, 'Changes Required')} className="flex-1 bg-yellow-600 py-2 rounded font-bold text-sm">Changes Req.</button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    ))}
+                </div>
+            </section>
+        )}
+
+        {/* 4. PHASE 4: DEVELOPMENT (MEETINGS & LOGS) */}
+        {developmentProjects.length > 0 && (
+            <section>
+                <h2 className="text-2xl font-bold mb-4 flex items-center text-green-400"><span className="mr-2">🛠️</span> Development Phase (Weekly Logs)</h2>
+                <div className="grid grid-cols-1 gap-6">
+                    {developmentProjects.map(p => (
+                        <div key={p._id} className="bg-gray-800 p-6 rounded-lg border border-green-500/30">
+                            <div className="flex justify-between items-center mb-4">
+                                <h3 className="font-bold text-xl">{p.leaderId?.name}</h3>
+                                <span className="bg-green-900 text-green-300 px-3 py-1 rounded-full text-xs">Active Development</span>
+                            </div>
+                            
+                            <div className="space-y-3">
+                                {p.weeklyLogs && p.weeklyLogs.length > 0 ? (
+                                    p.weeklyLogs.sort((a,b)=>a.weekNumber-b.weekNumber).map(log => (
+                                    <div key={log.weekNumber} className="bg-gray-900 p-4 rounded border border-gray-700 flex justify-between items-start">
+                                        <div>
+                                            <span className="text-blue-400 font-bold text-sm">Week {log.weekNumber}</span>
+                                            <div className="text-xs text-gray-400 mt-1">Requested: {new Date(log.meetingDate).toDateString()}</div>
+                                            {log.content && <p className="text-sm text-gray-300 mt-2 border-l-2 border-green-500 pl-2">{log.content}</p>}
+                                        </div>
+                                        
+                                        <div className="flex flex-col gap-2">
+                                            {log.meetingStatus === 'Pending' && (
+                                                <button onClick={() => handleAcceptMeeting(p._id, log.weekNumber)} className="bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded text-xs font-bold">Accept Meeting</button>
+                                            )}
+                                            {log.meetingStatus === 'Accepted' && !log.content && activeLogId?.weekNumber !== log.weekNumber && (
+                                                <button onClick={() => setActiveLogId({ projectId: p._id, weekNumber: log.weekNumber })} className="bg-green-600 hover:bg-green-700 px-3 py-1 rounded text-xs font-bold">Write Log</button>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))
+                                ) : <p className="text-gray-500 italic">No meetings scheduled yet.</p>}
+                                
+                                {activeLogId && activeLogId.projectId === p._id && (
+                                    <div className="bg-gray-700 p-4 rounded border border-green-500 mt-2">
+                                        <h4 className="text-sm font-bold mb-2">Write Log for Week {activeLogId.weekNumber}</h4>
+                                        <textarea value={logContent} onChange={(e) => setLogContent(e.target.value)} className="w-full bg-gray-900 p-2 rounded text-white text-sm mb-2" rows="3" placeholder="Log details..."></textarea>
+                                        <div className="flex gap-2">
+                                            <button onClick={() => handleWriteLog(p._id, activeLogId.weekNumber)} className="bg-green-600 px-4 py-1 rounded text-sm font-bold">Save</button>
+                                            <button onClick={() => setActiveLogId(null)} className="bg-gray-500 px-4 py-1 rounded text-sm font-bold">Cancel</button>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </section>
+        )}
+
+        {/* 5. PHASE 5: FINAL DEFENSE */}
+        {finalDefenseProjects.length > 0 && (
+            <section>
+                <h2 className="text-2xl font-bold mb-4 flex items-center text-red-400"><span className="mr-2">🎓</span> Final Defense Evaluation</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {finalDefenseProjects.map(p => (
+                        <div key={p._id} className="bg-gray-800 p-6 rounded-lg border border-red-500/50">
+                            <h3 className="font-bold text-lg mb-1">{p.leaderId?.name}</h3>
+                            <p className="text-xs text-gray-400 mb-4">Date: {p.finalDefense?.scheduledDate ? new Date(p.finalDefense.scheduledDate).toDateString() : 'TBA'}</p>
+                            
+                            {p.finalDefense?.finalPptUrl ? (
+                                <a href={getFileUrl(p.finalDefense.finalPptUrl)} target="_blank" className="block mb-4 text-blue-400 text-sm underline">📥 Download Final PPT</a>
+                            ) : (
+                                <p className="text-xs text-yellow-500 mb-4">PPT not uploaded yet</p>
+                            )}
+
+                            <div className="mt-4 pt-4 border-t border-gray-700">
+                                <label className="text-sm font-bold block mb-1">Supervisor Marks (30%)</label>
+                                <div className="flex gap-2">
+                                    <input 
+                                        type="number" 
+                                        id={`final-mark-${p._id}`}
+                                        defaultValue={p.finalDefense?.marks?.supervisor || ''}
+                                        disabled={p.finalDefense?.marks?.supervisor}
+                                        className="bg-gray-900 border border-gray-600 p-2 rounded w-24 text-white" 
+                                        placeholder="0-30"
+                                    />
+                                    {!p.finalDefense?.marks?.supervisor ? (
+                                        <button onClick={() => handleSubmitFinalMark(p._id)} className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded text-sm font-bold">Submit</button>
+                                    ) : <span className="text-green-500 font-bold flex items-center">✅ Submitted</span>}
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </section>
+        )}
+
+        {/* Empty State */}
+        {pendingConsents.length === 0 && initialDefenseProjects.length === 0 && srsSdsReviewProjects.length === 0 && developmentProjects.length === 0 && finalDefenseProjects.length === 0 && (
+            <div className="text-center py-20 text-gray-500">
+                <h3 className="text-xl">No active tasks found.</h3>
             </div>
-          </div>
         )}
 
-        {/* Summary when all done */}
-        {pendingConsents.length === 0 && 
-         srsSdsReviewProjects.length === 0 && 
-         initialDefenseProjects.length === 0 && (
-          <div className="bg-gray-800 rounded-lg shadow p-12 text-center">
-            <div className="text-6xl mb-4">🎉</div>
-            <h3 className="text-xl font-semibold mb-2">All Tasks Completed!</h3>
-            <p className="text-gray-400">You have no pending evaluations or consent requests at this time.</p>
-          </div>
-        )}
-
-        {/* Consent Form Modal */}
-        {selectedProject && (
-          <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50 overflow-y-auto">
-            <div className="bg-gray-800 rounded-lg shadow-2xl max-w-4xl w-full max-h-[95vh] overflow-y-auto border border-gray-700">
-              
-              {/* Header */}
-              <div className="p-6 border-b border-gray-700 bg-gradient-to-r from-blue-900 to-purple-900">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h2 className="text-2xl font-bold text-white">📜 FYP Supervision Consent Form</h2>
-                    <p className="text-gray-300 mt-1">University Final Year Project Program</p>
-                  </div>
-                  <button
-                    onClick={() => {
-                      setSelectedProject(null);
-                      setFeedback('');
-                      setSignatureName(supervisor.name);
-                      setAgreedToTerms(false);
-                    }}
-                    className="text-gray-400 hover:text-gray-200 text-2xl"
-                  >
-                    ✕
-                  </button>
-                </div>
-              </div>
-
-              <div className="p-6 space-y-6">
-                
-                {/* Student Information */}
-                <div className="bg-gray-900 p-5 rounded-lg border border-gray-700">
-                  <h3 className="font-semibold text-white mb-4 flex items-center text-lg">
-                    <span className="text-2xl mr-3">👨‍🎓</span>
-                    Student Information
-                  </h3>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <span className="text-gray-400 text-sm">Full Name:</span>
-                      <div className="font-medium text-white mt-1">{selectedProject.leaderId?.name}</div>
-                    </div>
-                    <div>
-                      <span className="text-gray-400 text-sm">Enrollment Number:</span>
-                      <div className="font-medium text-white mt-1">{selectedProject.leaderId?.enrollment}</div>
-                    </div>
-                    <div className="col-span-2">
-                      <span className="text-gray-400 text-sm">Email Address:</span>
-                      <div className="font-medium text-white mt-1">{selectedProject.leaderId?.email || 'N/A'}</div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Proposal Document */}
-                <div className="bg-gray-900 p-5 rounded-lg border border-gray-700">
-                  <h3 className="font-semibold text-white mb-4 flex items-center text-lg">
-                    <span className="text-2xl mr-3">📄</span>
-                    Project Proposal Document
-                  </h3>
-                  <p className="text-gray-400 text-sm mb-4">
-                    Please review the complete project proposal before signing the consent form.
-                  </p>
-                  <a
-                    href={`http://localhost:5000/${selectedProject.documentUrl}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
-                  >
-                    📥 Download & Review Proposal
-                  </a>
-                </div>
-
-                {/* Coordinator Comments */}
-                {selectedProject.coordinatorFeedback && (
-                  <div className="bg-blue-900 bg-opacity-30 p-5 rounded-lg border border-blue-700">
-                    <h3 className="font-semibold text-white mb-3 flex items-center">
-                      <span className="text-xl mr-2">💬</span>
-                      Coordinator's Comments
-                    </h3>
-                    <p className="text-gray-300">{selectedProject.coordinatorFeedback}</p>
-                  </div>
-                )}
-
-                {/* Supervision Terms & Conditions */}
-                <div className="bg-amber-900 bg-opacity-30 p-5 rounded-lg border border-amber-700">
-                  <h3 className="font-semibold text-white mb-3 flex items-center text-lg">
-                    <span className="text-2xl mr-2">⚖️</span>
-                    Supervision Commitment & Responsibilities
-                  </h3>
-                  <div className="space-y-3 text-sm text-gray-300">
-                    <p>By signing this consent form, I agree to:</p>
-                    <ul className="list-disc list-inside space-y-2 ml-2">
-                      <li>Supervise the student's FYP project for the entire academic year</li>
-                      <li>Conduct regular meetings (minimum bi-weekly) to monitor progress</li>
-                      <li>Provide timely feedback on project milestones and deliverables</li>
-                      <li>Guide the student in research methodology and technical aspects</li>
-                      <li>Review and approve all major project documents and presentations</li>
-                      <li>Attend the final project defense and evaluation</li>
-                      <li>Submit final grades and evaluation reports to the FYP coordinator</li>
-                    </ul>
-                    <p className="mt-4 font-semibold text-yellow-300">
-                      ⚠️ Note: This is a formal commitment that will be recorded in university records.
-                    </p>
-                  </div>
-                </div>
-
-                {/* Your Feedback Section */}
-                <div>
-                  <label className="block font-semibold text-white mb-2 text-lg">
-                    💭 Your Comments / Guidance (Optional)
-                  </label>
-                  <textarea
-                    value={feedback}
-                    onChange={(e) => setFeedback(e.target.value)}
-                    className="w-full p-4 bg-gray-900 border border-gray-700 text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    rows="4"
-                    placeholder="Provide guidance, expectations, or reasons for your decision..."
-                  />
-                </div>
-
-                {/* Agreement Checkbox */}
-                <div className="bg-gray-900 p-5 rounded-lg border border-gray-700">
-                  <div className="flex items-start">
-                    <input
-                      type="checkbox"
-                      id="agreeTerms"
-                      checked={agreedToTerms}
-                      onChange={(e) => setAgreedToTerms(e.target.checked)}
-                      className="mt-1 w-5 h-5 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500"
-                    />
-                    <label htmlFor="agreeTerms" className="ml-3 text-sm text-gray-300">
-                      <span className="font-semibold text-white">I have read and agree to the supervision responsibilities</span>
-                      <p className="mt-1">
-                        I confirm that I have reviewed the project proposal and understand my commitments as the project supervisor.
-                      </p>
-                    </label>
-                  </div>
-                </div>
-
-                {/* Digital Signature */}
-                <div className="bg-gray-900 p-5 rounded-lg border border-gray-700">
-                  <h3 className="font-semibold text-white mb-3 flex items-center text-lg">
-                    <span className="text-2xl mr-2">✍️</span>
-                    Digital Signature
-                  </h3>
-                  <label className="block text-sm text-gray-400 mb-2">
-                    Type your full name to sign <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={signatureName}
-                    onChange={(e) => setSignatureName(e.target.value)}
-                    className="w-full p-4 bg-gray-800 border border-gray-600 text-white rounded-lg focus:ring-2 focus:ring-blue-500 font-signature text-2xl"
-                    placeholder="Enter your full name"
-                    style={{ fontFamily: 'Brush Script MT, cursive' }}
-                  />
-                  <p className="text-xs text-gray-500 mt-2">
-                    📅 Date: {new Date().toLocaleDateString()} | 🕐 Time: {new Date().toLocaleTimeString()}
-                  </p>
-                </div>
-
-                {/* Action Buttons */}
-                <div className="grid grid-cols-2 gap-4 pt-4 border-t border-gray-700">
-                  <button
-                    onClick={() => handleDecision(selectedProject._id, 'Approved')}
-                    disabled={processing || !signatureName.trim() || !agreedToTerms}
-                    className="px-6 py-4 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg hover:from-green-700 hover:to-green-800 transition-all font-bold text-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center shadow-lg"
-                  >
-                    {processing ? (
-                      <>
-                        <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-white mr-3"></div>
-                        Processing...
-                      </>
-                    ) : (
-                      <>
-                        ✅ Sign & Accept Supervision
-                      </>
-                    )}
-                  </button>
-                  <button
-                    onClick={() => handleDecision(selectedProject._id, 'Rejected')}
-                    disabled={processing}
-                    className="px-6 py-4 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-lg hover:from-red-700 hover:to-red-800 transition-all font-bold text-lg disabled:opacity-50 flex items-center justify-center shadow-lg"
-                  >
-                    ❌ Decline Request
-                  </button>
-                </div>
-
-                {/* Warning Message */}
-                {(!signatureName.trim() || !agreedToTerms) && (
-                  <div className="bg-red-900 bg-opacity-30 p-4 rounded-lg border border-red-700">
-                    <p className="text-red-300 text-sm flex items-center">
-                      <span className="mr-2">⚠️</span>
-                      {!agreedToTerms && !signatureName.trim() 
-                        ? 'Please agree to the terms and provide your signature to approve.'
-                        : !agreedToTerms 
-                        ? 'Please agree to the supervision terms to proceed.'
-                        : 'Please provide your signature to approve.'}
-                    </p>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
       </div>
+
+      {/* CONSENT FORM MODAL */}
+      {selectedProject && (
+          <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50">
+            <div className="bg-gray-800 rounded-lg shadow-2xl max-w-2xl w-full p-6 border border-gray-700">
+                <h2 className="text-2xl font-bold text-white mb-4">Approve Project</h2>
+                <p className="text-gray-300 mb-4">Student: {selectedProject.leaderId?.name}</p>
+                <input type="text" value={signatureName} onChange={e=>setSignatureName(e.target.value)} className="w-full p-3 bg-gray-900 border border-gray-600 rounded text-white mb-4" placeholder="Digital Signature (Your Name)" />
+                <div className="flex items-center mb-6">
+                    <input type="checkbox" checked={agreedToTerms} onChange={e=>setAgreedToTerms(e.target.checked)} className="mr-2"/>
+                    <label className="text-sm text-gray-300">I agree to supervise this project.</label>
+                </div>
+                <div className="flex gap-4">
+                    <button onClick={() => handleDecision(selectedProject._id, 'Approved')} disabled={processing} className="flex-1 bg-green-600 py-3 rounded font-bold text-white">Approve</button>
+                    <button onClick={() => setSelectedProject(null)} className="flex-1 bg-gray-700 py-3 rounded font-bold text-white">Cancel</button>
+                </div>
+            </div>
+          </div>
+      )}
     </div>
   );
 };
