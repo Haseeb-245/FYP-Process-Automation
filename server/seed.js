@@ -104,6 +104,18 @@ const importData = async () => {
     });
     console.log(`   ✅ ${coordinator.name} | ${coordinator.email}`);
 
+    console.log("\n👨‍🔬 Creating External Examiner...");
+const external = await User.create({
+  name: "Dr. External Examiner",
+  email: "external@uni.edu",
+  password: "123",
+  role: "external",
+  facultyId: "FAC-EXT-001",
+  department: "Industry Partner",
+  organization: "TechCorp Solutions"
+});
+console.log(`   ✅ ${external.name} | ${external.email}`);
+
     // Verify all users were created
     const allUsers = await User.find({});
     console.log("\n" + "=".repeat(50));

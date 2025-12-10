@@ -224,7 +224,45 @@ router.get('/external-pending', async (req, res) => {
     }
 });
 
+// ADD THIS NEW ROUTE FOR EXTERNAL EXAMINER TO SUBMIT MARKS
+router.put('/external-submit-marks/:id', async (req, res) => {
+    try {
+        const { marks } = req.body;
+        const project = await Project.findById(req.params.id);
 
+        if (!project) return res.status(404).json({ message: "Project not found" });
+
+        // Check if final PPT is uploaded
+        if (!project.finalDefense.finalPptUrl) {
+            return res.status(400).json({ message: "Final PPT not uploaded yet" });
+        }
+
+        // Update external examiner marks
+        if (!project.finalDefense.marks) project.finalDefense.marks = {};
+        project.finalDefense.marks.external = parseInt(marks);
+
+        // Check if all 4 have graded (including external)
+        const m = project.finalDefense.marks;
+        if (m.coordinator != null && m.supervisor != null && m.panel != null && m.external != null) {
+            project.status = 'Project Completed';
+            
+            // Optional: Calculate final grade
+            const totalMarks = m.coordinator + m.supervisor + m.panel + m.external;
+            project.finalDefense.totalMarks = totalMarks;
+            project.finalDefense.percentage = (totalMarks / 100) * 100; // Assuming 100 total marks
+        }
+
+        await project.save();
+        res.json({ 
+            message: "External Examiner Grade Submitted", 
+            project,
+            allGraded: project.status === 'Project Completed'
+        });
+    } catch (error) {
+        console.error("Error submitting external examiner grade:", error);
+        res.status(500).json({ message: "Server Error" });
+    }
+});
 // ==========================================
 //          EVALUATION LIST (UPDATED)
 // ==========================================

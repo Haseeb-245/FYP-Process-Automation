@@ -128,11 +128,58 @@ const Landing = () => {
     }
 
     // --- 4. BOARD LOGIN (Still Dummy) ---
-    if (selectedRole === 'board') {
-      console.log(`Logging in as ${selectedRole} ${boardSubRole ? `(${boardSubRole})` : ''}`, credentials);
-      navigate('/board/dashboard');
-      return;
+   // --- 4. BOARD LOGIN (Now with proper External Examiner logic) ---
+if (selectedRole === 'board') {
+  // First handle the board sub-role selection
+  if (!boardSubRole) {
+    alert("Please select Panel Member or External Examiner first");
+    return;
+  }
+
+  setLoading(true);
+  
+  try {
+    const response = await fetch('http://localhost:5000/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        email: credentials.id,
+        password: credentials.password 
+      }),
+    });
+
+    const data = await response.json();
+
+    if (response.ok) {
+      // Check if the user's role matches the selected sub-role
+      const expectedRole = boardSubRole === 'external' ? 'external' : 'board';
+      
+      if (data.role !== expectedRole) {
+        alert(`Access Denied: This account is not a ${boardSubRole}. Role: ${data.role}`);
+        setLoading(false);
+        return;
+      }
+
+      localStorage.setItem('userInfo', JSON.stringify(data));
+      console.log(`${boardSubRole} Login Successful:`, data);
+      
+      // Redirect based on sub-role
+      if (boardSubRole === 'external') {
+        navigate('/external/dashboard'); // External Examiner dashboard
+      } else {
+        navigate('/board/dashboard'); // Panel Member dashboard
+      }
+    } else {
+      alert("Login Failed: " + (data.message || "Invalid credentials"));
     }
+  } catch (error) {
+    console.error("Login Error:", error);
+    alert("Server error. Is the backend running on port 5000?");
+  } finally {
+    setLoading(false);
+  }
+  return;
+}
   };
 
   return (
