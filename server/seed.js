@@ -18,8 +18,8 @@ const importData = async () => {
     // 2. Create STUDENT
     console.log("\n👨‍🎓 Creating Student...");
     const student1 = await User.create({
-      name: "Huzaifa Imran",
-      enrollment: "01-131232-033", 
+      name: "Haseeb Irfan",
+      enrollment: "01-131232-029", 
       password: "123",
       role: "student"
 

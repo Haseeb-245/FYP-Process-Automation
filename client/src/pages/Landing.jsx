@@ -45,6 +45,7 @@ const Landing = () => {
         }
       } catch (error) {
         console.error("Login Error:", error);
+        console.error("Login Error:", error);
         alert("Server error. Is the backend running on port 5000?");
       } finally {
         setLoading(false);
@@ -182,196 +183,226 @@ const Landing = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#0a2342] via-[#1a365d] to-[#0a2342] flex items-center justify-center p-4 font-sans text-white relative overflow-hidden">
+    <div className="min-h-screen bg-[#0F172A] flex flex-col font-['Arial',_'Helvetica',_sans-serif]">
       
-      {/* Bahria University Header */}
-      <div className="absolute top-0 left-0 right-0 bg-white/10 backdrop-blur-sm border-b border-white/20 py-4 px-8 z-20">
-        <div className="max-w-6xl mx-auto flex items-center justify-between">
+      {/* Professional University Header */}
+      <header className="bg-white border-b-2 border-[#E5E7EB] py-5 px-8 shadow-sm">
+        <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-white rounded-lg flex items-center justify-center shadow-lg">
-              <div className="text-center ">
-                <div className="text-[10px] font-bold text-[#0a2342] leading-tight ">
-                  BU
-                </div>
-                <div className="text-[8px] font-bold text-[#0a2342] leading-tight"></div>
+            {/* University Logo */}
+            <div className="w-14 h-14 bg-[#0F172A] rounded flex items-center justify-center shadow-md">
+              <div className="text-center">
+                <div className="text-sm font-bold text-white leading-tight">BU</div>
               </div>
             </div>
+            {/* University Name */}
             <div>
-              <div className="text-lg font-bold text-white">Bahria University</div>
-              <div className="text-sm text-white/80">Final Year Project Management System</div>
+              <h1 className="text-2xl font-bold text-[#0F172A] tracking-tight">Bahria University</h1>
+              <p className="text-sm text-[#64748B] font-medium mt-0.5">Final Year Project Management System</p>
             </div>
           </div>
-          <div className="text-sm text-white/70 hidden md:block">
-            Secure Portal Access
+          {/* Right Side Badge */}
+          <div className="hidden md:flex items-center gap-2 bg-[#F8FAFC] px-4 py-2 rounded border border-[#E5E7EB]">
+            <div className="w-2 h-2 bg-[#0F172A] rounded-full"></div>
+            <span className="text-sm font-medium text-[#0F172A]">Secure Portal</span>
           </div>
         </div>
-      </div>
+      </header>
 
-      {/* Main Content */}
-      <div className="z-10 w-full max-w-6xl text-center mt-20">
-        <div className="mb-10">
-          <div className="inline-block px-6 py-2 bg-white/10 rounded-full border border-white/20 mb-4">
-            <span className="text-sm font-medium text-white/90">Welcome to BU-FYPMS</span>
-          </div>
-          <h1 className="text-4xl font-bold mb-3 text-white">
-            Final Year Project Management System
-          </h1>
-          <p className="text-white/70 mb-8 max-w-2xl mx-auto">
-            A comprehensive platform for managing Final Year Projects across all departments of Bahria University
-          </p>
-        </div>
-
-        {/* THE 4 MAIN CARDS */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-16">
+      {/* Main Content Area */}
+      <main className="flex-1 flex items-center justify-center px-4 py-12">
+        <div className="w-full max-w-6xl">
           
-          {/* Card 1: Student */}
-          <RoleCard 
-            title="Student" 
-            icon="🎓" 
-            color="text-blue-400"
-            borderColor="border-blue-500/30"
-            bgColor="bg-gradient-to-br from-blue-900/40 to-blue-800/20"
-            onClick={() => handleRoleSelect('student')}
-            description="Project submission & tracking"
-          />
+          {/* Hero Section - Centered */}
+          <div className="text-center mb-14">
+            <div className="inline-block mb-4">
+              <span className="bg-white/10 text-white text-xs font-semibold px-4 py-2 rounded-full border border-white/20">
+                ACADEMIC PORTAL ACCESS
+              </span>
+            </div>
+            <h2 className="text-4xl md:text-5xl font-bold text-white mb-4 tracking-tight">
+              Welcome to FYP Management System
+            </h2>
+            <p className="text-lg text-[#CBD5E1] max-w-2xl mx-auto leading-relaxed">
+              Streamlined project management platform for students, faculty, and administration
+            </p>
+          </div>
 
-          {/* Card 2: FYP Board */}
-          <RoleCard 
-            title="FYP Board" 
-            icon="⚖️" 
-            color="text-red-400"
-            borderColor="border-red-500/30"
-            bgColor="bg-gradient-to-br from-red-900/40 to-red-800/20"
-            onClick={() => handleRoleSelect('board')}
-            description="Evaluation & assessment"
-          />
+          {/* Role Cards Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+            
+            {/* Student Card */}
+            <RoleCard 
+              title="Student" 
+              icon={
+                <svg className="w-12 h-12" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M10.394 2.08a1 1 0 00-.788 0l-7 3a1 1 0 000 1.84L5.25 8.051a.999.999 0 01.356-.257l4-1.714a1 1 0 11.788 1.838L7.667 9.088l1.94.831a1 1 0 00.787 0l7-3a1 1 0 000-1.838l-7-3zM3.31 9.397L5 10.12v4.102a8.969 8.969 0 00-1.05-.174 1 1 0 01-.89-.89 11.115 11.115 0 01.25-3.762zM9.3 16.573A9.026 9.026 0 007 14.935v-3.957l1.818.78a3 3 0 002.364 0l5.508-2.361a11.026 11.026 0 01.25 3.762 1 1 0 01-.89.89 8.968 8.968 0 00-5.35 2.524 1 1 0 01-1.4 0zM6 18a1 1 0 001-1v-2.065a8.935 8.935 0 00-2-.712V17a1 1 0 001 1z"/>
+                </svg>
+              }
+              onClick={() => handleRoleSelect('student')}
+              description="Submit projects and track progress"
+            />
 
-          {/* Card 3: Coordinator */}
-          <RoleCard 
-            title="Coordinator" 
-            icon="👔" 
-            color="text-emerald-400"
-            borderColor="border-emerald-500/30"
-            bgColor="bg-gradient-to-br from-emerald-900/40 to-emerald-800/20"
-            onClick={() => handleRoleSelect('coordinator')}
-            description="Administrative oversight"
-          />
+            {/* FYP Board Card */}
+            <RoleCard 
+              title="FYP Board" 
+              icon={
+                <svg className="w-12 h-12" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M6 2a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2V7.414A2 2 0 0015.414 6L12 2.586A2 2 0 0010.586 2H6zm5 6a1 1 0 10-2 0v3.586l-1.293-1.293a1 1 0 10-1.414 1.414l3 3a1 1 0 001.414 0l3-3a1 1 0 00-1.414-1.414L11 11.586V8z" clipRule="evenodd"/>
+                </svg>
+              }
+              onClick={() => handleRoleSelect('board')}
+              description="Evaluate and assess projects"
+            />
 
-          {/* Card 4: Supervisor */}
-          <RoleCard 
-            title="Supervisor" 
-            icon="👓" 
-            color="text-amber-400"
-            borderColor="border-amber-500/30"
-            bgColor="bg-gradient-to-br from-amber-900/40 to-amber-800/20"
-            onClick={() => handleRoleSelect('supervisor')}
-            description="Project guidance & evaluation"
-          />
+            {/* Coordinator Card */}
+            <RoleCard 
+              title="Coordinator" 
+              icon={
+                <svg className="w-12 h-12" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M6 6V5a3 3 0 013-3h2a3 3 0 013 3v1h2a2 2 0 012 2v3.57A22.952 22.952 0 0110 13a22.95 22.95 0 01-8-1.43V8a2 2 0 012-2h2zm2-1a1 1 0 011-1h2a1 1 0 011 1v1H8V5zm1 5a1 1 0 011-1h.01a1 1 0 110 2H10a1 1 0 01-1-1z" clipRule="evenodd"/>
+                  <path d="M2 13.692V16a2 2 0 002 2h12a2 2 0 002-2v-2.308A24.974 24.974 0 0110 15c-2.796 0-5.487-.46-8-1.308z"/>
+                </svg>
+              }
+              onClick={() => handleRoleSelect('coordinator')}
+              description="Administrative oversight and management"
+            />
+
+            {/* Supervisor Card */}
+            <RoleCard 
+              title="Supervisor" 
+              icon={
+                <svg className="w-12 h-12" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z"/>
+                </svg>
+              }
+              onClick={() => handleRoleSelect('supervisor')}
+              description="Guide and evaluate student projects"
+            />
+          </div>
+
+          {/* Footer */}
+          <div className="text-center pt-8 border-t border-white/10">
+            <p className="text-sm text-[#94A3B8]">
+              © {new Date().getFullYear()} Bahria University. All rights reserved.
+            </p>
+            <p className="text-xs text-[#64748B] mt-2">
+              Select your role above to access the portal
+            </p>
+          </div>
         </div>
+      </main>
 
-        {/* Footer Note */}
-        <div className="text-sm text-white/50 border-t border-white/10 pt-6 max-w-2xl mx-auto">
-          <p>© {new Date().getFullYear()} Bahria University. All rights reserved.</p>
-          <p className="mt-1">Select your role to access the secure portal</p>
-        </div>
-      </div>
-
-      {/* LOGIN MODAL OVERLAY */}
+      {/* Glassmorphism Login Modal */}
       {selectedRole && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-50 p-4 transition-opacity duration-300">
-          <div className="bg-gradient-to-b from-slate-800 to-slate-900 border border-white/10 p-8 rounded-xl w-full max-w-md shadow-2xl relative transform transition-all scale-100">
+        <div className="fixed inset-0 bg-[#0F172A]/80 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-fadeIn">
+          <div className="bg-white/95 backdrop-blur-xl border border-white/20 shadow-2xl rounded-2xl w-full max-w-md p-8 relative">
             
             {/* Close Button */}
             <button 
               onClick={() => setSelectedRole(null)}
-              className="absolute top-4 right-4 text-white/70 hover:text-white transition-colors bg-white/10 hover:bg-white/20 w-8 h-8 rounded-full flex items-center justify-center"
+              className="absolute top-4 right-4 text-[#64748B] hover:text-[#0F172A] transition-colors w-8 h-8 rounded-full hover:bg-[#F1F5F9] flex items-center justify-center font-bold text-xl"
             >
-              ✕
+              ×
             </button>
 
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center">
-                <div className="text-center">
-                  <div className="text-[8px] font-bold text-[#0a2342] leading-tight">BU</div>
+            {/* Modal Header */}
+            <div className="mb-8">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-10 h-10 bg-[#0F172A] rounded flex items-center justify-center">
+                  <span className="text-white text-xs font-bold">BU</span>
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-[#0F172A]">
+                    {selectedRole === 'board' && !boardSubRole ? 'Select Board Role' : `${selectedRole.charAt(0).toUpperCase() + selectedRole.slice(1)} Login`}
+                  </h3>
+                  <p className="text-xs text-[#64748B]">Bahria University Portal</p>
                 </div>
               </div>
-              <div>
-                <h2 className="text-xl font-bold text-white">
-                  {selectedRole === 'board' && !boardSubRole ? 'Select Board Role' : `${selectedRole.charAt(0).toUpperCase() + selectedRole.slice(1)} Portal`}
-                </h2>
-                <p className="text-sm text-white/60">Bahria University Authentication</p>
-              </div>
+              <div className="h-1 w-16 bg-[#0F172A] rounded-full"></div>
             </div>
 
-            {/* LOGIC: FYP BOARD SUB-SELECTION */}
+            {/* Board Sub-Role Selection */}
             {selectedRole === 'board' && !boardSubRole ? (
-              <div className="space-y-4">
+              <div className="space-y-3">
                 <button 
                   onClick={() => setBoardSubRole('panel')}
-                  className="w-full p-4 bg-gradient-to-r from-red-900/30 to-red-800/20 hover:from-red-900/40 hover:to-red-800/30 rounded-lg text-left flex items-center gap-4 transition-all border border-red-500/20 hover:border-red-500/40 group"
+                  className="w-full p-5 bg-[#F8FAFC] hover:bg-[#0F172A] hover:text-white rounded-xl text-left flex items-center gap-4 transition-all border-2 border-[#E5E7EB] hover:border-[#0F172A] group"
                 >
-                  <span className="text-2xl group-hover:scale-110 transition-transform">📋</span>
+                  <div className="w-12 h-12 bg-white group-hover:bg-white/20 rounded-lg flex items-center justify-center flex-shrink-0 border border-[#E5E7EB]">
+                    <svg className="w-6 h-6 text-[#0F172A] group-hover:text-white" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M6 2a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2V7.414A2 2 0 0015.414 6L12 2.586A2 2 0 0010.586 2H6zm5 6a1 1 0 10-2 0v3.586l-1.293-1.293a1 1 0 10-1.414 1.414l3 3a1 1 0 001.414 0l3-3a1 1 0 00-1.414-1.414L11 11.586V8z" clipRule="evenodd"/>
+                    </svg>
+                  </div>
                   <div>
-                    <div className="font-bold text-white">Panel Member</div>
-                    <div className="text-xs text-white/60">Internal evaluation and grading</div>
+                    <div className="font-bold text-[#0F172A] group-hover:text-white mb-1">Panel Member</div>
+                    <div className="text-xs text-[#64748B] group-hover:text-white/80">Internal evaluation and grading</div>
                   </div>
                 </button>
+                
                 <button 
                   onClick={() => setBoardSubRole('external')}
-                  className="w-full p-4 bg-gradient-to-r from-red-900/30 to-red-800/20 hover:from-red-900/40 hover:to-red-800/30 rounded-lg text-left flex items-center gap-4 transition-all border border-red-500/20 hover:border-red-500/40 group"
+                  className="w-full p-5 bg-[#F8FAFC] hover:bg-[#0F172A] hover:text-white rounded-xl text-left flex items-center gap-4 transition-all border-2 border-[#E5E7EB] hover:border-[#0F172A] group"
                 >
-                  <span className="text-2xl group-hover:scale-110 transition-transform">🌍</span>
+                  <div className="w-12 h-12 bg-white group-hover:bg-white/20 rounded-lg flex items-center justify-center flex-shrink-0 border border-[#E5E7EB]">
+                    <svg className="w-6 h-6 text-[#0F172A] group-hover:text-white" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M12 1.586l-4 4v12.828l4-4V1.586zM3.707 3.293A1 1 0 002 4v10a1 1 0 00.293.707L6 18.414V5.586L3.707 3.293zM17.707 5.293L14 1.586v12.828l2.293 2.293A1 1 0 0018 16V6a1 1 0 00-.293-.707z" clipRule="evenodd"/>
+                    </svg>
+                  </div>
                   <div>
-                    <div className="font-bold text-white">External Examiner</div>
-                    <div className="text-xs text-white/60">Final year project defense</div>
+                    <div className="font-bold text-[#0F172A] group-hover:text-white mb-1">External Examiner</div>
+                    <div className="text-xs text-[#64748B] group-hover:text-white/80">Final project defense evaluation</div>
                   </div>
                 </button>
               </div>
             ) : (
-              /* ACTUAL LOGIN FORM */
+              /* Login Form */
               <form onSubmit={handleLogin} className="space-y-5">
                 
-                {/* Dynamic Input */}
+                {/* ID/Email Input */}
                 <div>
-                  <label className="block text-sm font-medium text-white/80 mb-2">
-                    {selectedRole === 'student' ? 'Enrollment Number' : 'University ID / Email'}
+                  <label className="block text-sm font-bold text-[#0F172A] mb-2">
+                    {selectedRole === 'student' ? 'Enrollment Number' : 'University Email / ID'}
                   </label>
                   <input 
                     type="text" 
                     required
-                    className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-white placeholder-white/40 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all focus:border-blue-500"
+                    className="w-full bg-[#F8FAFC] border-2 border-[#E5E7EB] rounded-lg px-4 py-3 text-[#0F172A] placeholder-[#94A3B8] focus:border-[#0F172A] focus:outline-none transition-all"
                     placeholder={selectedRole === 'student' ? 'e.g. 01-134192-023' : 'Enter your university ID'}
                     value={credentials.id}
                     onChange={(e) => setCredentials({...credentials, id: e.target.value})}
                   />
                 </div>
 
+                {/* Password Input */}
                 <div>
-                  <label className="block text-sm font-medium text-white/80 mb-2">Password</label>
+                  <label className="block text-sm font-bold text-[#0F172A] mb-2">Password</label>
                   <input 
                     type="password" 
                     required
-                    className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-white placeholder-white/40 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all focus:border-blue-500"
+                    className="w-full bg-[#F8FAFC] border-2 border-[#E5E7EB] rounded-lg px-4 py-3 text-[#0F172A] placeholder-[#94A3B8] focus:border-[#0F172A] focus:outline-none transition-all"
                     placeholder="Enter your password"
                     value={credentials.password}
                     onChange={(e) => setCredentials({...credentials, password: e.target.value})}
                   />
                 </div>
 
+                {/* Board Role Indicator */}
                 {selectedRole === 'board' && (
-                  <div className="text-xs text-white/60 text-center bg-red-900/20 py-2 rounded border border-red-500/20">
-                    Logging in as: <span className="text-red-300 font-semibold capitalize">{boardSubRole}</span>
+                  <div className="text-xs text-[#64748B] text-center bg-[#F1F5F9] py-2.5 rounded-lg border border-[#E5E7EB]">
+                    Logging in as: <span className="text-[#0F172A] font-bold capitalize">{boardSubRole}</span>
                   </div>
                 )}
 
+                {/* Submit Button */}
                 <button 
                   type="submit"
                   disabled={loading}
-                  className={`w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white font-semibold py-3 rounded-lg shadow-lg hover:shadow-blue-500/30 transition-all transform active:scale-95 ${loading ? 'opacity-70 cursor-not-allowed' : ''}`}
+                  className={`w-full bg-[#0F172A] hover:bg-[#1E293B] text-white font-bold py-4 rounded-lg transition-all shadow-lg hover:shadow-xl transform active:scale-98 ${loading ? 'opacity-60 cursor-not-allowed' : ''}`}
                 >
                   {loading ? (
                     <span className="flex items-center justify-center gap-2">
-                      <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                       </svg>
@@ -380,9 +411,10 @@ const Landing = () => {
                   ) : 'Access Portal'}
                 </button>
 
-                <div className="text-center pt-4 border-t border-white/10">
-                  <p className="text-xs text-white/50">
-                    Need help? Contact IT Support at <span className="text-blue-300">it-support@bahria.edu.pk</span>
+                {/* Support Info */}
+                <div className="text-center pt-4 border-t border-[#E5E7EB]">
+                  <p className="text-xs text-[#64748B]">
+                    Need assistance? Contact <span className="text-[#0F172A] font-semibold">it-support@bahria.edu.pk</span>
                   </p>
                 </div>
               </form>
@@ -394,28 +426,25 @@ const Landing = () => {
   );
 };
 
-// Enhanced Reusable Card Component
-const RoleCard = ({ title, icon, color, borderColor, bgColor, onClick, description }) => (
+// Professional Role Card Component
+const RoleCard = ({ title, icon, onClick, description }) => (
   <div 
     onClick={onClick}
-    className={`group ${bgColor} border ${borderColor} p-6 rounded-xl cursor-pointer hover:scale-[1.02] transition-all duration-300 hover:shadow-xl backdrop-blur-sm relative overflow-hidden`}
+    className="group bg-white hover:bg-[#0F172A] border-2 border-[#E5E7EB] hover:border-[#0F172A] p-8 rounded-xl cursor-pointer transition-all duration-300 hover:shadow-2xl hover:-translate-y-1"
   >
-    {/* Hover effect overlay */}
-    <div className="absolute inset-0 bg-gradient-to-t from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-    
-    <div className="relative z-10">
-      <div className={`text-5xl mb-4 transition-transform duration-300 group-hover:scale-110 ${color}`}>
-        {icon}
-      </div>
-      <h3 className={`text-lg font-bold text-white mb-1 transition-colors ${color}`}>
-        {title}
-      </h3>
-      <p className="text-sm text-white/60">{description}</p>
-      <div className="mt-4 pt-4 border-t border-white/10">
-        <div className="text-xs text-white/40 group-hover:text-white/60 transition-colors">
-          Click to login →
-        </div>
-      </div>
+    <div className="text-[#0F172A] group-hover:text-white mb-4 transition-colors">
+      {icon}
+    </div>
+    <h3 className="text-xl font-bold text-[#0F172A] group-hover:text-white mb-2 transition-colors">
+      {title}
+    </h3>
+    <p className="text-sm text-[#64748B] group-hover:text-white/80 mb-4 transition-colors leading-relaxed">
+      {description}
+    </p>
+    <div className="pt-4 border-t border-[#E5E7EB] group-hover:border-white/20">
+      <span className="text-xs font-bold text-[#0F172A] group-hover:text-white transition-colors uppercase tracking-wide">
+        Click to Login →
+      </span>
     </div>
   </div>
 );
