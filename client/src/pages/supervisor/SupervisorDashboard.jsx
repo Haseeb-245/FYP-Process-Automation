@@ -49,9 +49,9 @@ const SupervisorDashboard = () => {
         initialDefenseRes,
         srsSdsRes
       ] = await Promise.all([
-        fetch(`http://${process.env.REACT_APP_API_URL}/api/projects/supervisor-pending/${supervisorId}`),
-        fetch(`http://${process.env.REACT_APP_API_URL}/api/projects/supervisor-initial-defense/${supervisorId}`),
-        fetch(`http://${process.env.REACT_APP_API_URL}/api/projects/supervisor-srs-sds-review/${supervisorId}`)
+        fetch(`${process.env.REACT_APP_API_URL}/api/projects/supervisor-pending/${supervisorId}`),
+        fetch(`${process.env.REACT_APP_API_URL}/api/projects/supervisor-initial-defense/${supervisorId}`),
+        fetch(`${process.env.REACT_APP_API_URL}/api/projects/supervisor-srs-sds-review/${supervisorId}`)
       ]);
 
       if (consentsRes.ok) setPendingConsents(await consentsRes.json());
@@ -74,7 +74,7 @@ const SupervisorDashboard = () => {
   const getFileUrl = (path) => {
     if (!path) return '#';
     const cleanPath = path.replace(/\\/g, '/');
-    return `http://${process.env.REACT_APP_API_URL}/${cleanPath}`;
+    return `${process.env.REACT_APP_API_URL}/${cleanPath}`;
   };
 
   // --- ACTIONS ---
@@ -86,7 +86,7 @@ const SupervisorDashboard = () => {
 
     try {
       setProcessing(true);
-      const response = await fetch(`http://${process.env.REACT_APP_API_URL}/api/projects/supervisor-decision/${projectId}`, {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/projects/supervisor-decision/${projectId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -121,7 +121,7 @@ const SupervisorDashboard = () => {
 
     try {
       setProcessing(true);
-      const response = await fetch(`http://${process.env.REACT_APP_API_URL}/api/projects/submit-initial-defense-marks/${projectId}`, {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/projects/submit-initial-defense-marks/${projectId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ role: 'supervisor', marks: parseFloat(marksInput), feedback: feedbackInput })
@@ -138,7 +138,7 @@ const SupervisorDashboard = () => {
 
   const handleAcceptMeeting = async (projectId, weekNumber) => {
       try {
-          const res = await fetch(`http://${process.env.REACT_APP_API_URL}/api/projects/accept-meeting/${projectId}`, {
+          const res = await fetch(`${process.env.REACT_APP_API_URL}/api/projects/accept-meeting/${projectId}`, {
               method: 'PUT',
               headers: {'Content-Type': 'application/json'},
               body: JSON.stringify({ weekNumber })
@@ -153,7 +153,7 @@ const SupervisorDashboard = () => {
   const handleWriteLog = async (projectId, weekNumber) => {
       if(!logContent.trim()) return alert("Please write log content");
       try {
-          const res = await fetch(`http://${process.env.REACT_APP_API_URL}/api/projects/write-weekly-log/${projectId}`, {
+          const res = await fetch(`${process.env.REACT_APP_API_URL}/api/projects/write-weekly-log/${projectId}`, {
               method: 'PUT',
               headers: {'Content-Type': 'application/json'},
               body: JSON.stringify({ weekNumber, content: logContent })
@@ -172,7 +172,7 @@ const SupervisorDashboard = () => {
       if(!mark || mark < 0 || mark > 30) return alert("Please enter valid marks (0-30)");
       
       try {
-          const res = await fetch(`http://${process.env.REACT_APP_API_URL}/api/projects/submit-final-marks/${projectId}`, {
+          const res = await fetch(`${process.env.REACT_APP_API_URL}/api/projects/submit-final-marks/${projectId}`, {
               method: 'PUT',
               headers: {'Content-Type': 'application/json'},
               body: JSON.stringify({ role: 'supervisor', marks: mark })
@@ -189,7 +189,7 @@ const SupervisorDashboard = () => {
     if (decision !== 'Approved' && !feedbackInput.trim()) return alert('Please provide feedback');
     try {
       setProcessing(true);
-      await fetch(`http://${process.env.REACT_APP_API_URL}/api/projects/supervisor-srs-sds-decision/${projectId}`, {
+      await fetch(`${process.env.REACT_APP_API_URL}/api/projects/supervisor-srs-sds-decision/${projectId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ decision, feedback: feedbackInput })
@@ -206,7 +206,7 @@ const SupervisorDashboard = () => {
 
     try {
       setProcessing(true);
-      await fetch(`http://${process.env.REACT_APP_API_URL}/api/projects/submit-srs-sds-marks/${projectId}`, {
+      await fetch(`${process.env.REACT_APP_API_URL}/api/projects/submit-srs-sds-marks/${projectId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ role: 'supervisor', marks: parseFloat(marksInput), feedback: feedbackInput })

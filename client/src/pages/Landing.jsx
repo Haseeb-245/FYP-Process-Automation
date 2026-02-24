@@ -25,7 +25,7 @@ const Landing = () => {
     if (selectedRole === 'student') {
       setLoading(true);
       try {
-        const response = await fetch('http://${process.env.REACT_APP_API_URL}/api/auth/login', {
+        const response = await fetch('${process.env.REACT_APP_API_URL}/api/auth/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ 
@@ -56,7 +56,7 @@ const Landing = () => {
     if (selectedRole === 'coordinator') {
       setLoading(true);
       try {
-        const response = await fetch('http://${process.env.REACT_APP_API_URL}/api/auth/login', {
+        const response = await fetch('${process.env.REACT_APP_API_URL}/api/auth/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ 
@@ -94,7 +94,7 @@ const Landing = () => {
     if (selectedRole === 'supervisor') {
       setLoading(true);
       try {
-        const response = await fetch('http://${process.env.REACT_APP_API_URL}/api/auth/login', {
+        const response = await fetch('${process.env.REACT_APP_API_URL}/api/auth/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ 
@@ -138,7 +138,7 @@ const Landing = () => {
       setLoading(true);
       
       try {
-        const response = await fetch('http://${process.env.REACT_APP_API_URL}/api/auth/login', {
+        const response = await fetch('${process.env.REACT_APP_API_URL}/api/auth/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ 

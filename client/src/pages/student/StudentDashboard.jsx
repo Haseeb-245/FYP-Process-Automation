@@ -37,7 +37,7 @@ const StudentDashboard = () => {
   const refreshProjectStatus = async (studentId) => {
     try {
       setLoading(true);
-      const response = await fetch(`http://${process.env.REACT_APP_API_URL}/api/projects/my-project/${studentId}`);
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/projects/my-project/${studentId}`);
       if (!response.ok) {
         throw new Error('Failed to fetch project');
       }
@@ -77,7 +77,7 @@ const StudentDashboard = () => {
 
     try {
       setUploading(true);
-      const response = await fetch('http://${process.env.REACT_APP_API_URL}/api/projects/upload-doc', { 
+      const response = await fetch('${process.env.REACT_APP_API_URL}/api/projects/upload-doc', { 
         method: 'POST', 
         body: formData 
       });
@@ -112,7 +112,7 @@ const StudentDashboard = () => {
     }
 
     try {
-        const response = await fetch('http://${process.env.REACT_APP_API_URL}/api/projects/request-meeting', {
+        const response = await fetch('${process.env.REACT_APP_API_URL}/api/projects/request-meeting', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -135,7 +135,7 @@ const StudentDashboard = () => {
 
   const submitForSrsSdsReview = async (projectId) => {
     try {
-      const response = await fetch(`http://${process.env.REACT_APP_API_URL}/api/projects/submit-srs-sds-review/${projectId}`, {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/projects/submit-srs-sds-review/${projectId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' }
       });

@@ -32,9 +32,9 @@ const BoardDashboard = () => {
       setLoading(true);
       
       const [initialRes, srsSdsRes, finalRes] = await Promise.all([
-        fetch('http://${process.env.REACT_APP_API_URL}/api/projects/initial-defense-projects'),
-        fetch('http://${process.env.REACT_APP_API_URL}/api/projects/srs-sds-evaluation-projects'),
-        fetch('http://${process.env.REACT_APP_API_URL}/api/projects/evaluation-list/final')
+        fetch('${process.env.REACT_APP_API_URL}/api/projects/initial-defense-projects'),
+        fetch('${process.env.REACT_APP_API_URL}/api/projects/srs-sds-evaluation-projects'),
+        fetch('${process.env.REACT_APP_API_URL}/api/projects/evaluation-list/final')
       ]);
 
       if (initialRes.ok) setInitialDefenseProjects(await initialRes.json());
@@ -56,7 +56,7 @@ const BoardDashboard = () => {
   const getFileUrl = (path) => {
     if (!path) return '#';
     const cleanPath = path.replace(/\\/g, '/');
-    return `http://${process.env.REACT_APP_API_URL}/${cleanPath}`;
+    return `${process.env.REACT_APP_API_URL}/${cleanPath}`;
   };
 
   // --- SUBMIT HANDLERS ---
@@ -67,7 +67,7 @@ const BoardDashboard = () => {
     try {
       setProcessing(true);
       const submitData = { role: 'panel', feedback: feedback || undefined, marks: parseFloat(marks) };
-      const res = await fetch(`http://${process.env.REACT_APP_API_URL}/api/projects/submit-initial-defense-marks/${selectedProject._id}`, {
+      const res = await fetch(`${process.env.REACT_APP_API_URL}/api/projects/submit-initial-defense-marks/${selectedProject._id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(submitData),
@@ -84,7 +84,7 @@ const BoardDashboard = () => {
     if (!marks || marks < 0 || marks > 5) return alert('Enter valid marks (0-5)');
     try {
       setProcessing(true);
-      const res = await fetch(`http://${process.env.REACT_APP_API_URL}/api/projects/submit-srs-sds-marks/${selectedProject._id}`, {
+      const res = await fetch(`${process.env.REACT_APP_API_URL}/api/projects/submit-srs-sds-marks/${selectedProject._id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ role: 'panel', marks: parseFloat(marks), feedback }),
@@ -101,7 +101,7 @@ const BoardDashboard = () => {
       if (!marks || marks < 0 || marks > 30) return alert('Enter valid marks (0-30)');
       try {
           setProcessing(true);
-          const res = await fetch(`http://${process.env.REACT_APP_API_URL}/api/projects/submit-final-marks/${selectedProject._id}`, {
+          const res = await fetch(`${process.env.REACT_APP_API_URL}/api/projects/submit-final-marks/${selectedProject._id}`, {
               method: 'PUT',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ role: 'panel', marks: parseFloat(marks) })

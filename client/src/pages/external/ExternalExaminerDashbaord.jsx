@@ -39,7 +39,7 @@ const ExternalExaminerDashboard = () => {
     try {
       setLoading(true);
       // Fetch projects ready for final defense evaluation
-      const response = await fetch('http://${process.env.REACT_APP_API_URL}/api/projects/external-pending');
+      const response = await fetch('${process.env.REACT_APP_API_URL}/api/projects/external-pending');
       const data = await response.json();
       console.log('External examiner projects:', data);
       setProjects(data);
@@ -55,7 +55,7 @@ const ExternalExaminerDashboard = () => {
     if (!path) return '#';
     // Replace backslashes with forward slashes for URL compatibility
     const cleanPath = path.replace(/\\/g, '/');
-    return `http://${process.env.REACT_APP_API_URL}/${cleanPath}`;
+    return `${process.env.REACT_APP_API_URL}/${cleanPath}`;
   };
 
   const handleSubmitGrade = async () => {
@@ -66,7 +66,7 @@ const ExternalExaminerDashboard = () => {
 
     try {
       setProcessing(true);
-      const response = await fetch(`http://${process.env.REACT_APP_API_URL}/api/projects/submit-final-marks/${selectedProject._id}`, {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/projects/submit-final-marks/${selectedProject._id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

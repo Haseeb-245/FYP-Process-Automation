@@ -41,7 +41,7 @@ export const FinalDefenseCoordinator = () => {
       setLoading(true);
       // Fetch projects relevant to Final Phase
       // We look for projects in Development Phase (ready to schedule) or Final Defense stages
-      const response = await fetch('http://${process.env.REACT_APP_API_URL}/api/projects/evaluation-list/final');
+      const response = await fetch('${process.env.REACT_APP_API_URL}/api/projects/evaluation-list/final');
       const data = await response.json();
       
       // Note: Backend endpoint should return projects with status: 
@@ -59,7 +59,7 @@ export const FinalDefenseCoordinator = () => {
     if (!defenseDate) return alert('Please select a date');
     try {
       setProcessing(true);
-      const res = await fetch(`http://${process.env.REACT_APP_API_URL}/api/projects/schedule-final-defense/${selectedProject._id}`, {
+      const res = await fetch(`${process.env.REACT_APP_API_URL}/api/projects/schedule-final-defense/${selectedProject._id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ date: defenseDate })
@@ -79,7 +79,7 @@ export const FinalDefenseCoordinator = () => {
     if (!marks || marks < 0 || marks > 30) return alert('Enter valid marks (0-30)');
     try {
       setProcessing(true);
-      const res = await fetch(`http://${process.env.REACT_APP_API_URL}/api/projects/submit-final-marks/${selectedProject._id}`, {
+      const res = await fetch(`${process.env.REACT_APP_API_URL}/api/projects/submit-final-marks/${selectedProject._id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ role: 'coordinator', marks: marks })
@@ -162,7 +162,7 @@ export const FinalDefenseCoordinator = () => {
                   )}
                 </div>
                 {p.finalDefense?.finalPptUrl ? (
-                   <a href={`http://${process.env.REACT_APP_API_URL}/${p.finalDefense.finalPptUrl}`} target="_blank" rel="noopener noreferrer" className="text-blue-400 text-xs underline">Download Final PPT</a>
+                   <a href={`${process.env.REACT_APP_API_URL}/${p.finalDefense.finalPptUrl}`} target="_blank" rel="noopener noreferrer" className="text-blue-400 text-xs underline">Download Final PPT</a>
                 ) : <span className="text-yellow-500 text-xs">PPT Pending from Student</span>}
               </div>
             ))}
@@ -239,7 +239,7 @@ export const InitialDefenseEvaluation = () => {
   const fetchInitialDefenseProjects = async () => {
     try {
       setLoading(true);
-      const response = await fetch('http://${process.env.REACT_APP_API_URL}/api/projects/initial-defense-projects');
+      const response = await fetch('${process.env.REACT_APP_API_URL}/api/projects/initial-defense-projects');
       const data = await response.json();
       console.log('Initial defense projects:', data);
       setProjects(data);
@@ -260,7 +260,7 @@ export const InitialDefenseEvaluation = () => {
 
     try {
       setProcessing(true);
-      const response = await fetch(`http://${process.env.REACT_APP_API_URL}/api/projects/submit-initial-defense-marks/${selectedProject._id}`, {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/projects/submit-initial-defense-marks/${selectedProject._id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -365,7 +365,7 @@ export const InitialDefenseEvaluation = () => {
                       </td>
                       <td className="px-6 py-4">
                         <a
-                          href={`http://${process.env.REACT_APP_API_URL}/${project.presentationUrl}`}
+                          href={`${process.env.REACT_APP_API_URL}/${project.presentationUrl}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg transition-colors inline-flex items-center"
@@ -448,7 +448,7 @@ export const InitialDefenseEvaluation = () => {
                   <div>
                     <span className="text-gray-400">Download PPT:</span>
                     <a
-                      href={`http://${process.env.REACT_APP_API_URL}/${selectedProject.presentationUrl}`}
+                      href={`${process.env.REACT_APP_API_URL}/${selectedProject.presentationUrl}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-blue-400 hover:underline block"
@@ -532,7 +532,7 @@ export const SrsSdsCoordinator = () => { // ← ADD 'export' HERE
   const fetchSrsSdsProjects = async () => {
     try {
       setLoading(true);
-      const response = await fetch('http://${process.env.REACT_APP_API_URL}/api/projects/srs-sds-evaluation-projects');
+      const response = await fetch('${process.env.REACT_APP_API_URL}/api/projects/srs-sds-evaluation-projects');
       const data = await response.json();
       console.log('SRS/SDS projects for coordinator:', data);
       setProjects(data);
@@ -551,7 +551,7 @@ export const SrsSdsCoordinator = () => { // ← ADD 'export' HERE
 
     try {
       setProcessing(true);
-      const response = await fetch(`http://${process.env.REACT_APP_API_URL}/api/projects/submit-srs-sds-marks/${selectedProject._id}`, {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/projects/submit-srs-sds-marks/${selectedProject._id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -654,7 +654,7 @@ export const SrsSdsCoordinator = () => { // ← ADD 'export' HERE
                       </td>
                       <td className="px-6 py-4">
                         <a
-                          href={`http://${process.env.REACT_APP_API_URL}/${project.srsUrl}`}
+                          href={`${process.env.REACT_APP_API_URL}/${project.srsUrl}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg transition-colors inline-flex items-center"
@@ -664,7 +664,7 @@ export const SrsSdsCoordinator = () => { // ← ADD 'export' HERE
                       </td>
                       <td className="px-6 py-4">
                         <a
-                          href={`http://${process.env.REACT_APP_API_URL}/${project.sdsUrl}`}
+                          href={`${process.env.REACT_APP_API_URL}/${project.sdsUrl}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg transition-colors inline-flex items-center"
@@ -747,7 +747,7 @@ export const SrsSdsCoordinator = () => { // ← ADD 'export' HERE
                   <div>
                     <span className="text-gray-400">Download SRS:</span>
                     <a
-                      href={`http://${process.env.REACT_APP_API_URL}/${selectedProject.srsUrl}`}
+                      href={`${process.env.REACT_APP_API_URL}/${selectedProject.srsUrl}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-blue-400 hover:underline block"
@@ -758,7 +758,7 @@ export const SrsSdsCoordinator = () => { // ← ADD 'export' HERE
                   <div>
                     <span className="text-gray-400">Download SDS:</span>
                     <a
-                      href={`http://${process.env.REACT_APP_API_URL}/${selectedProject.sdsUrl}`}
+                      href={`${process.env.REACT_APP_API_URL}/${selectedProject.sdsUrl}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-blue-400 hover:underline block"
@@ -1001,7 +1001,7 @@ export const Dashboard = () => {
 
   const fetchSupervisors = async () => {
     try {
-      const response = await fetch('http://${process.env.REACT_APP_API_URL}/api/projects/supervisors');
+      const response = await fetch('${process.env.REACT_APP_API_URL}/api/projects/supervisors');
       const data = await response.json();
       console.log('Supervisors fetched:', data);
       setSupervisors(data);
@@ -1013,7 +1013,7 @@ export const Dashboard = () => {
   const fetchPendingProposals = async () => {
     try {
       setLoading(true);
-      const response = await fetch('http://${process.env.REACT_APP_API_URL}/api/projects/pending');
+      const response = await fetch('${process.env.REACT_APP_API_URL}/api/projects/pending');
       const data = await response.json();
       console.log('Proposals fetched:', data);
       setProposals(data);
@@ -1041,7 +1041,7 @@ export const Dashboard = () => {
        
       let response;
       if (status === 'Approved') {
-        response = await fetch(`http://${process.env.REACT_APP_API_URL}/api/projects/assign-supervisor/${projectId}`, {
+        response = await fetch(`${process.env.REACT_APP_API_URL}/api/projects/assign-supervisor/${projectId}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -1052,7 +1052,7 @@ export const Dashboard = () => {
           }),
         });
       } else {
-        response = await fetch(`http://${process.env.REACT_APP_API_URL}/api/projects/decision/${projectId}`, {
+        response = await fetch(`${process.env.REACT_APP_API_URL}/api/projects/decision/${projectId}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -1287,7 +1287,7 @@ export const Dashboard = () => {
               <div>
                 <h3 className="font-semibold text-white mb-2">Proposal Document</h3>
                 <a
-                  href={`http://${process.env.REACT_APP_API_URL}/${selectedProposal.documentUrl}`}
+                  href={`${process.env.REACT_APP_API_URL}/${selectedProposal.documentUrl}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
@@ -1382,11 +1382,11 @@ export const AllProjects = () => {
   const fetchAllProjects = async () => {
     try {
       setLoading(true);
-      const response = await fetch('http://${process.env.REACT_APP_API_URL}/api/projects/defense-pending');
+      const response = await fetch('${process.env.REACT_APP_API_URL}/api/projects/defense-pending');
       const data = await response.json();
        
       // Also fetch pending proposals
-      const pendingResponse = await fetch('http://${process.env.REACT_APP_API_URL}/api/projects/pending');
+      const pendingResponse = await fetch('${process.env.REACT_APP_API_URL}/api/projects/pending');
       const pendingData = await pendingResponse.json();
        
       // Combine all projects
@@ -1536,7 +1536,7 @@ export const AllProjects = () => {
                     </td>
                     <td className="px-6 py-4">
                       <a
-                        href={`http://${process.env.REACT_APP_API_URL}/${project.documentUrl}`}
+                        href={`${process.env.REACT_APP_API_URL}/${project.documentUrl}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all inline-flex items-center"
@@ -1573,7 +1573,7 @@ export const ScheduleDefense = () => {
   const fetchDefensePendingProjects = async () => {
     try {
       setLoading(true);
-      const response = await fetch('http://${process.env.REACT_APP_API_URL}/api/projects/defense-pending');
+      const response = await fetch('${process.env.REACT_APP_API_URL}/api/projects/defense-pending');
       const data = await response.json();
       console.log('Defense pending projects:', data);
       setProjects(data);
@@ -1596,7 +1596,7 @@ export const ScheduleDefense = () => {
 
     try {
       setProcessing(true);
-      const response = await fetch(`http://${process.env.REACT_APP_API_URL}/api/projects/assign-defense/${selectedProject._id}`, {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/projects/assign-defense/${selectedProject._id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
