@@ -15,7 +15,10 @@ const app = express();
 
 // Middleware
 app.use(express.json()); // Parse JSON request body
-app.use(cors()); // Allow cross-origin requests
+app.use(cors({
+  origin: 'https://fyp-process-automation-fsts.vercel.app/', 
+  credentials: true
+}));
 
 // Serve uploaded files publicly
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
