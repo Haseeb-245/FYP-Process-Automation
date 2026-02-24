@@ -16,7 +16,7 @@ const app = express();
 // Middleware
 app.use(express.json()); // Parse JSON request body
 app.use(cors({
-  origin: 'https://fyp-process-automation-fsts.vercel.app/', 
+  origin: 'https://fyp-process-automation-fsts.vercel.app',
   credentials: true
 }));
 
