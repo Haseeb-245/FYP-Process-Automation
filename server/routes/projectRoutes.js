@@ -1,16 +1,8 @@
 const express = require('express');
 const router = express.Router();
-const multer = require('multer');
 const Project = require('../models/Project');
 const User = require('../models/User');
-const path = require('path');
-
-// --- CONFIGURATION ---
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) { cb(null, 'uploads/'); },
-  filename: function (req, file, cb) { cb(null, file.fieldname + '-' + Date.now() + path.extname(file.originalname)); }
-});
-const upload = multer({ storage: storage });
+const { upload } = require('../config/cloudinary'); // ✅ Cloudinary replaces local multer
 
 // ==========================================
 //              STUDENT ROUTES
@@ -36,27 +28,28 @@ router.post('/upload-doc', upload.single('file'), async (req, res) => {
         const file = req.file;
         if (!file) return res.status(400).json({ message: 'No file uploaded' });
 
+        const fileUrl = file.path; // ✅ Cloudinary returns the URL in file.path
+
         let updateData = {};
         
         switch(docType) {
             case 'proposal': 
                 updateData = { 
-                    documentUrl: file.path, 
+                    documentUrl: fileUrl, 
                     status: 'Pending Coordinator Review', 
                     proposedSupervisorName: proposedSupervisor 
                 }; 
                 break;
-            case 'ppt': updateData = { presentationUrl: file.path }; break;
-            case 'srs': updateData = { srsUrl: file.path }; break;
-            case 'sds': updateData = { sdsUrl: file.path }; break;
-            // Phase 4: Final PPT Upload
+            case 'ppt': updateData = { presentationUrl: fileUrl }; break;
+            case 'srs': updateData = { srsUrl: fileUrl }; break;
+            case 'sds': updateData = { sdsUrl: fileUrl }; break;
             case 'final-ppt': 
                 updateData = { 
-                    'finalDefense.finalPptUrl': file.path,
-                    status: 'Final Defense Pending' // Ready for grading
+                    'finalDefense.finalPptUrl': fileUrl,
+                    status: 'Final Defense Pending'
                 };
                 break;
-            case 'code': updateData = { finalCodeUrl: file.path }; break;
+            case 'code': updateData = { finalCodeUrl: fileUrl }; break;
         }
 
         let project = await Project.findOne({ leaderId: studentId });
@@ -87,14 +80,12 @@ router.post('/request-meeting', async (req, res) => {
         
         if (!project) return res.status(404).json({ message: "Project not found" });
 
-        // Remove existing log for this week if exists to overwrite
         if (project.weeklyLogs) {
             project.weeklyLogs = project.weeklyLogs.filter(log => log.weekNumber !== parseInt(weekNumber));
         } else {
             project.weeklyLogs = [];
         }
 
-        // Add new log entry
         project.weeklyLogs.push({
             weekNumber: parseInt(weekNumber),
             meetingDate: date,
@@ -102,7 +93,6 @@ router.post('/request-meeting', async (req, res) => {
             content: null
         });
 
-        // Ensure status is Development Phase
         if(project.status !== 'Development Phase') {
             project.status = 'Development Phase';
         }
@@ -186,11 +176,9 @@ router.put('/submit-final-marks/:id', async (req, res) => {
 
         if (!project) return res.status(404).json({ message: "Project not found" });
 
-        // Update the specific mark
         if (!project.finalDefense.marks) project.finalDefense.marks = {};
         project.finalDefense.marks[role] = parseInt(marks);
 
-        // Check if all 4 have graded
         const m = project.finalDefense.marks;
         if (m.coordinator != null && m.supervisor != null && m.panel != null && m.external != null) {
             project.status = 'Project Completed';
@@ -224,7 +212,6 @@ router.get('/external-pending', async (req, res) => {
     }
 });
 
-// ADD THIS NEW ROUTE FOR EXTERNAL EXAMINER TO SUBMIT MARKS
 router.put('/external-submit-marks/:id', async (req, res) => {
     try {
         const { marks } = req.body;
@@ -232,24 +219,19 @@ router.put('/external-submit-marks/:id', async (req, res) => {
 
         if (!project) return res.status(404).json({ message: "Project not found" });
 
-        // Check if final PPT is uploaded
         if (!project.finalDefense.finalPptUrl) {
             return res.status(400).json({ message: "Final PPT not uploaded yet" });
         }
 
-        // Update external examiner marks
         if (!project.finalDefense.marks) project.finalDefense.marks = {};
         project.finalDefense.marks.external = parseInt(marks);
 
-        // Check if all 4 have graded (including external)
         const m = project.finalDefense.marks;
         if (m.coordinator != null && m.supervisor != null && m.panel != null && m.external != null) {
             project.status = 'Project Completed';
-            
-            // Optional: Calculate final grade
             const totalMarks = m.coordinator + m.supervisor + m.panel + m.external;
             project.finalDefense.totalMarks = totalMarks;
-            project.finalDefense.percentage = (totalMarks / 100) * 100; // Assuming 100 total marks
+            project.finalDefense.percentage = (totalMarks / 100) * 100;
         }
 
         await project.save();
@@ -263,11 +245,11 @@ router.put('/external-submit-marks/:id', async (req, res) => {
         res.status(500).json({ message: "Server Error" });
     }
 });
+
 // ==========================================
-//          EVALUATION LIST (UPDATED)
+//          EVALUATION LIST
 // ==========================================
 
-// 4. Get Projects for Evaluation (Coordinator & Panel use this)
 router.get('/evaluation-list/:type', async (req, res) => {
     try {
         const type = req.params.type;
@@ -280,14 +262,13 @@ router.get('/evaluation-list/:type', async (req, res) => {
             query = { interimDate: { $ne: null } }; 
         } 
         else if (type === 'final') {
-             // FIX: ADDED 'Development Phase' SO COORDINATOR CAN SCHEDULE
              query = { 
                  status: { 
                      $in: [
-                         'Development Phase',        // Ready to Schedule
-                         'Final Defense Scheduled',  // Scheduled
-                         'Final Defense Pending',    // Waiting for grades
-                         'Project Completed'         // Done
+                         'Development Phase',
+                         'Final Defense Scheduled',
+                         'Final Defense Pending',
+                         'Project Completed'
                      ] 
                  } 
              };
@@ -296,7 +277,7 @@ router.get('/evaluation-list/:type', async (req, res) => {
         const projects = await Project.find(query).populate('leaderId', 'name enrollment email');
         res.json(projects);
     } catch (error) { 
-        console.error("Error fetching evaluation list:", error);
+        console.error("Error fetching evaluation list:");
         res.status(500).json({ message: 'Server Error' }); 
     }
 });
@@ -359,7 +340,6 @@ router.put('/decision/:id', async (req, res) => {
   }
 });
 
-// Phase 2 Defense Assignment
 router.put('/assign-defense/:id', async (req, res) => {
     try {
         const { date } = req.body;
@@ -416,7 +396,6 @@ router.put('/supervisor-decision/:id', async (req, res) => {
   }
 });
 
-// New "Fetch All" route for Supervisor Dashboard consistency
 router.get('/supervisor/all-my-projects/:id', async (req, res) => {
     try {
         const projects = await Project.find({ supervisorId: req.params.id })
@@ -626,7 +605,6 @@ router.put('/submit-srs-sds-marks/:projectId', async (req, res) => {
   }
 });
 
-// Original Supervisor active active projects route (kept for safety/backup logic)
 router.get('/supervisor-srs-sds-review/:supervisorId', async (req, res) => {
   try {
     const supervisorId = req.params.supervisorId;
