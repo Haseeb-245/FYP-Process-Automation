@@ -1,7 +1,4 @@
 const cloudinary = require('cloudinary').v2;
-const multerStorageCloudinary = require('multer-storage-cloudinary');
-const CloudinaryStorage = multerStorageCloudinary.CloudinaryStorage;
-const multer = require('multer');
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -9,14 +6,4 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-const storage = new CloudinaryStorage({
-  cloudinary: cloudinary,
-  params: {
-    folder: 'fyp-uploads',
-    allowed_formats: ['pdf', 'doc', 'docx', 'png', 'jpg', 'jpeg'],
-    resource_type: 'auto'
-  },
-});
-
-const upload = multer({ storage });
-module.exports = { cloudinary, upload };
+module.exports = cloudinary;

@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Project = require('../models/Project');
 const User = require('../models/User');
-const { upload } = require('../config/cloudinary');
+const { upload } = require('../config/cloudinary'); 
 
 // ==========================================
 //              STUDENT ROUTES
