@@ -1,4 +1,3 @@
-// index.js
 const express = require('express');
 const dotenv = require('dotenv');
 const cors = require('cors');
@@ -14,13 +13,13 @@ connectDB();
 const app = express();
 
 // Middleware
-app.use(express.json()); // Parse JSON request body
+app.use(express.json());
 app.use(cors({
   origin: 'https://fyp-process-automation-fsts.vercel.app',
   credentials: true
 }));
 
-// Serve uploaded files publicly
+// Serve uploaded files publicly (local only, Cloudinary handles production)
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Import Routes
@@ -36,8 +35,11 @@ app.get('/', (req, res) => {
   res.send('FYP Management System API is running...');
 });
 
-// Start server
+// Start server (local dev)
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
+
+// ✅ Required for Vercel
+module.exports = app;

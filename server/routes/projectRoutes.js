@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Project = require('../models/Project');
 const User = require('../models/User');
-const { upload } = require('../config/cloudinary'); 
+const { upload, uploadToCloudinary } = require('../config/cloudinary');
 
 // ==========================================
 //              STUDENT ROUTES
@@ -28,7 +28,9 @@ router.post('/upload-doc', upload.single('file'), async (req, res) => {
         const file = req.file;
         if (!file) return res.status(400).json({ message: 'No file uploaded' });
 
-        const fileUrl = file.path; // ✅ Cloudinary returns the URL in file.path
+        // Upload buffer to Cloudinary
+        const result = await uploadToCloudinary(file.buffer);
+        const fileUrl = result.secure_url; // ✅ Cloudinary URL
 
         let updateData = {};
         
