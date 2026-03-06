@@ -162,10 +162,10 @@ const StudentDashboard = () => {
   const isPhase1Complete = (status) => !['Pending Coordinator Review', 'Rejected', 'Changes Required'].includes(status);
   const isPhase2Active = (status) => ['Approved - Ready for Defense', 'Scheduled for Defense', 'Defense Changes Required'].includes(status);
   const getStatusColor = (status) => {
-    if (!status) return 'bg-yellow-100 text-yellow-800 border-yellow-300';
-    if (status.includes('Approved') || status.includes('Cleared') || status.includes('Completed') || status.includes('Project Completed')) return 'bg-green-100 text-green-800 border-green-300';
-    if (status.includes('Rejected')) return 'bg-red-100 text-red-800 border-red-300';
-    return 'bg-blue-100 text-blue-800 border-blue-300';
+    if (!status) return 'bg-yellow-50 text-yellow-700 border-yellow-200';
+    if (status.includes('Approved') || status.includes('Cleared') || status.includes('Completed') || status.includes('Project Completed')) return 'bg-green-50 text-green-700 border-green-200';
+    if (status.includes('Rejected')) return 'bg-red-50 text-red-700 border-red-200';
+    return 'bg-blue-50 text-blue-700 border-blue-200';
   };
 
   // --- MARKING SCHEME CALCULATION ---
@@ -176,14 +176,12 @@ const StudentDashboard = () => {
     let total = 0;
 
     // 1. Proposal Evaluation (10% weight)
-    // Proposal is typically evaluated by coordinator only
     if (project.status === 'Approved - Waiting for Supervisor Consent' || 
         project.status === 'Approved - Ready for Defense' ||
         project.status === 'Scheduled for Defense') {
       
-      // Proposal is considered "passed" if it reaches these stages
-      const proposalMarks = 8; // 8/10 for passing proposal
-      const proposalWeighted = (proposalMarks / 10) * 10; // 10% weight
+      const proposalMarks = 8;
+      const proposalWeighted = (proposalMarks / 10) * 10;
       
       breakdown.proposal = {
         marks: proposalMarks,
@@ -200,9 +198,7 @@ const StudentDashboard = () => {
       const supervisorMarks = project.initialDefenseMarks.supervisor || 0;
       const panelMarks = project.initialDefenseMarks.panel || 0;
       
-      // Average of all 3 evaluators (each out of 10)
       const initialDefenseAverage = (coordinatorMarks + supervisorMarks + panelMarks) / 3;
-      // Convert to percentage of 10% weight
       const initialDefenseWeighted = (initialDefenseAverage / 10) * 10;
       
       breakdown.initialDefense = {
@@ -221,9 +217,7 @@ const StudentDashboard = () => {
       const supervisorMarks = project.srsSdsReviewMarks.supervisor || 0;
       const panelMarks = project.srsSdsReviewMarks.panel || 0;
       
-      // Average of all 3 evaluators (each out of 15)
       const srsSdsAverage = (coordinatorMarks + supervisorMarks + panelMarks) / 3;
-      // Convert to percentage of 15% weight
       const srsSdsWeighted = (srsSdsAverage / 15) * 15;
       
       breakdown.srsSds = {
@@ -240,22 +234,15 @@ const StudentDashboard = () => {
     if (project.finalDefense?.marks) {
       const finalMarks = project.finalDefense.marks;
       
-      // Individual marks and their weights (out of 65% total):
-      // - Coordinator: 15 marks out of 65 (23% weight of final defense)
-      // - Supervisor: 15 marks out of 65 (23% weight of final defense)
-      // - Panel: 25 marks out of 65 (38% weight of final defense)
-      // - External: 10 marks out of 65 (15% weight of final defense)
-      
       const coordinatorMarks = finalMarks.coordinator || 0;
       const supervisorMarks = finalMarks.supervisor || 0;
       const panelMarks = finalMarks.panel || 0;
       const externalMarks = finalMarks.external || 0;
       
-      // Calculate weighted contributions (out of 65%)
-      const coordinatorWeighted = (coordinatorMarks / 15) * 15; // 15% of total
-      const supervisorWeighted = (supervisorMarks / 15) * 15;   // 15% of total
-      const panelWeighted = (panelMarks / 25) * 25;            // 25% of total
-      const externalWeighted = (externalMarks / 10) * 10;       // 10% of total
+      const coordinatorWeighted = (coordinatorMarks / 15) * 15;
+      const supervisorWeighted = (supervisorMarks / 15) * 15;
+      const panelWeighted = (panelMarks / 25) * 25;
+      const externalWeighted = (externalMarks / 10) * 10;
       
       const finalTotalWeighted = coordinatorWeighted + supervisorWeighted + panelWeighted + externalWeighted;
       
@@ -279,7 +266,6 @@ const StudentDashboard = () => {
       total += finalTotalWeighted;
     }
 
-    // Calculate letter grade based on percentage
     const getLetterGrade = (percentage) => {
       if (percentage >= 90) return 'A+';
       if (percentage >= 85) return 'A';
@@ -305,12 +291,13 @@ const StudentDashboard = () => {
     };
   };
 
-  if (!student) return <div className="text-white p-10">Loading...</div>;
+  if (!student) return <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4"><div className="text-gray-600">Loading...</div></div>;
+  
   if (loading) return (
-    <div className="min-h-screen bg-gradient-to-b from-[#0a2342] via-[#1a365d] to-[#0a2342] flex items-center justify-center">
+    <div className="min-h-screen bg-gradient-to-br from-[#F1F5F9] via-white to-[#F8FAFC] flex items-center justify-center p-4">
       <div className="text-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
-        <p className="text-white/70">Loading dashboard...</p>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#1E40AF] mx-auto mb-4"></div>
+        <p className="text-[#64748B]">Loading dashboard...</p>
       </div>
     </div>
   );
@@ -318,69 +305,96 @@ const StudentDashboard = () => {
   const marksData = calculateTotalMarks();
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#0a2342] via-[#1a365d] to-[#0a2342] text-white">
-      {/* Header */}
-      <header className="bg-white/5 backdrop-blur-sm border-b border-white/10 shadow-lg">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
-          <div className="flex items-center gap-4">
-            <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center shadow">
-              <div className="text-center">
-                <div className="text-[9px] font-bold text-[#0a2342] leading-tight">BU</div>
-                <div className="text-[7px] font-bold text-[#0a2342] leading-tight">FYP</div>
+    <div className="min-h-screen bg-gradient-to-br from-[#F1F5F9] via-white to-[#F8FAFC] font-['Arial',_'Helvetica',_sans-serif]">
+      
+      {/* Fully Responsive Navbar */}
+      <header className="relative">
+        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#1E40AF] via-[#3B82F6] to-[#1E40AF]"></div>
+        
+        <div className="bg-gradient-to-b from-[#0F172A] to-[#1E293B] shadow-lg">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 sm:py-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
+              {/* Left: Logo and Info */}
+              <div className="flex items-center gap-3 sm:gap-4">
+                <div className="relative">
+                  <div className="absolute inset-0 bg-[#3B82F6] blur-md opacity-50 rounded-md"></div>
+                  <div className="relative w-10 h-10 sm:w-12 sm:h-12 bg-white rounded-md flex items-center justify-center shadow-xl p-2">
+                    <img 
+                      src="/path/to/your/logo.png" 
+                      alt="BU Logo" 
+                      className="w-full h-full object-contain"
+                      onError={(e) => {
+                        e.target.style.display = 'none';
+                        e.target.parentElement.innerHTML = '<div class="text-[#0F172A] font-bold text-sm sm:text-lg">BU</div>';
+                      }}
+                    />
+                  </div>
+                </div>
+                
+                <div className="border-l-2 border-[#3B82F6]/30 pl-3 sm:pl-4">
+                  <h1 className="text-base sm:text-xl font-bold text-white tracking-tight">Student Dashboard</h1>
+                  <p className="text-xs text-[#94A3B8] font-medium">{student.enrollment} • {student.name}</p>
+                </div>
+              </div>
+
+              {/* Right: Actions */}
+              <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
+                <button 
+                  onClick={() => refreshProjectStatus(student._id)}
+                  className="relative group flex-1 sm:flex-initial"
+                >
+                  <div className="absolute inset-0 bg-[#1E40AF] blur-xl opacity-0 group-hover:opacity-30 rounded-md transition-opacity"></div>
+                  <div className="relative bg-gradient-to-r from-[#1E40AF] to-[#3B82F6] px-3 sm:px-4 py-2 rounded-md shadow-md border border-[#3B82F6]/50 hover:shadow-lg transition-all">
+                    <span className="flex items-center justify-center gap-2 text-white text-xs sm:text-sm font-semibold">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                      </svg>
+                      <span className="hidden sm:inline">Refresh</span>
+                    </span>
+                  </div>
+                </button>
+                
+                <button 
+                  onClick={handleLogout}
+                  className="px-3 sm:px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md text-xs sm:text-sm font-semibold transition-colors shadow-md flex-1 sm:flex-initial"
+                >
+                  Logout
+                </button>
               </div>
             </div>
-            <div>
-              <h1 className="text-xl font-bold text-white">Student Dashboard</h1>
-              <p className="text-sm text-white/70">{student.enrollment} • {student.name}</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <button 
-              onClick={() => refreshProjectStatus(student._id)}
-              className="px-4 py-2 bg-white/10 hover:bg-white/20 border border-white/20 rounded-lg text-sm font-medium transition-all hover:scale-105"
-            >
-              <span className="flex items-center gap-2">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
-                Refresh
-              </span>
-            </button>
-            <button 
-              onClick={handleLogout}
-              className="px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg text-sm font-medium transition-colors"
-            >
-              Logout
-            </button>
           </div>
         </div>
+        
+        <div className="h-1 bg-gradient-to-b from-black/10 to-transparent"></div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-6 py-8 grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
         
-        {/* LEFT COLUMN: WORKFLOW */}
-        <div className="space-y-6">
+        {/* LEFT + MIDDLE COLUMNS: WORKFLOW (2 columns wide on desktop) */}
+        <div className="lg:col-span-2 space-y-4 sm:space-y-6">
           
           {/* Phase 1: Proposal */}
           {!project || !isPhase1Complete(project.status) ? (
-            <div className="bg-gradient-to-br from-slate-800 to-slate-900 backdrop-blur-sm rounded-xl border border-white/10 p-6 shadow-lg">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-12 h-12 bg-gradient-to-br from-blue-900 to-blue-800 rounded-lg flex items-center justify-center">
-                  <span className="text-2xl">📄</span>
+            <div className="bg-white border-2 border-[#CBD5E1] rounded-md shadow-md hover:shadow-lg transition-shadow p-4 sm:p-6">
+              <div className="flex items-center gap-3 mb-4 sm:mb-5">
+                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-[#1E40AF] to-[#3B82F6] rounded-md flex items-center justify-center shadow-md flex-shrink-0">
+                  <svg className="w-5 h-5 sm:w-6 sm:h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clipRule="evenodd"/>
+                  </svg>
                 </div>
-                <div>
-                  <h2 className="text-xl font-bold text-white">Phase 1: Proposal Submission</h2>
-                  <p className="text-sm text-white/60">Weight: 10% • First step in FYP process</p>
+                <div className="min-w-0">
+                  <h2 className="text-lg sm:text-xl font-bold text-[#0F172A] break-words">Phase 1: Proposal Submission</h2>
+                  <p className="text-xs sm:text-sm text-[#64748B]">Weight: 10% • First step in FYP process</p>
                 </div>
               </div>
 
               {project?.status === 'Approved - Waiting for Supervisor Consent' && (
-                <div className="mb-4 p-4 bg-blue-900/30 border border-blue-500/30 rounded-lg">
+                <div className="mb-4 sm:mb-5 p-3 sm:p-4 bg-[#EFF6FF] border-2 border-[#DBEAFE] rounded-md">
                   <div className="flex items-start gap-3">
-                    <div className="text-blue-400 text-xl">ℹ️</div>
-                    <div>
-                      <p className="text-blue-300 font-medium">Coordinator Accepted</p>
-                      <p className="text-sm text-blue-200/80">Waiting for Supervisor to sign the consent form</p>
+                    <div className="text-[#3B82F6] text-lg sm:text-xl flex-shrink-0">ℹ️</div>
+                    <div className="min-w-0">
+                      <p className="text-[#1E40AF] font-semibold text-sm sm:text-base">Coordinator Accepted</p>
+                      <p className="text-xs sm:text-sm text-[#475569]">Waiting for Supervisor to sign the consent form</p>
                     </div>
                   </div>
                 </div>
@@ -388,37 +402,33 @@ const StudentDashboard = () => {
 
               <form onSubmit={(e) => handleUpload(e, 'proposal')} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-white/80 mb-2">Proposed Supervisor (Optional)</label>
+                  <label className="block text-xs sm:text-sm font-bold text-[#0F172A] mb-2">Proposed Supervisor (Optional)</label>
                   <input 
                     type="text" 
                     value={proposedSupervisor} 
                     onChange={(e) => setProposedSupervisor(e.target.value)} 
-                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/40 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                    className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-[#F8FAFC] border-2 border-[#CBD5E1] rounded-md text-sm sm:text-base text-[#0F172A] placeholder-[#94A3B8] focus:border-[#1E40AF] focus:ring-2 focus:ring-[#1E40AF]/20 focus:outline-none transition-all"
                     placeholder="Enter supervisor name..."
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-white/80 mb-2">Proposal Document</label>
-                  <div className="flex items-center gap-3">
-                    <div className="flex-1">
-                      <input 
-                        type="file" 
-                        accept=".pdf,.doc,.docx" 
-                        onChange={(e) => setFile(e.target.files[0])} 
-                        className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer"
-                      />
-                    </div>
-                  </div>
-                  <p className="text-xs text-white/50 mt-2">Supported formats: PDF, DOC, DOCX</p>
+                  <label className="block text-xs sm:text-sm font-bold text-[#0F172A] mb-2">Proposal Document</label>
+                  <input 
+                    type="file" 
+                    accept=".pdf,.doc,.docx" 
+                    onChange={(e) => setFile(e.target.files[0])} 
+                    className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-[#F8FAFC] border-2 border-[#CBD5E1] rounded-md text-sm text-[#0F172A] file:mr-3 sm:file:mr-4 file:py-1.5 sm:file:py-2 file:px-3 sm:file:px-4 file:rounded-md file:border-0 file:text-xs sm:file:text-sm file:font-semibold file:bg-[#1E40AF] file:text-white hover:file:bg-[#1E3A8A] cursor-pointer transition-all"
+                  />
+                  <p className="text-xs text-[#64748B] mt-2">Supported formats: PDF, DOC, DOCX</p>
                 </div>
                 <button 
                   type="submit" 
                   disabled={uploading}
-                  className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white font-medium py-3 px-6 rounded-lg transition-all hover:shadow-lg hover:shadow-blue-500/25 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  className="w-full bg-gradient-to-r from-[#1E40AF] to-[#3B82F6] hover:from-[#1E3A8A] hover:to-[#2563EB] text-white font-bold py-2.5 sm:py-3.5 rounded-md transition-all shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm sm:text-base"
                 >
                   {uploading ? (
                     <>
-                      <svg className="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
+                      <svg className="animate-spin h-4 w-4 sm:h-5 sm:w-5" fill="none" viewBox="0 0 24 24">
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                       </svg>
@@ -431,21 +441,23 @@ const StudentDashboard = () => {
               </form>
             </div>
           ) : (
-            <div className="bg-gradient-to-r from-green-900/30 to-emerald-900/30 backdrop-blur-sm rounded-xl border border-green-500/30 p-6">
-              <div className="flex items-center justify-between">
+            <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-md p-4 sm:p-6 shadow-md">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-gradient-to-br from-green-700 to-emerald-800 rounded-lg flex items-center justify-center">
-                    <span className="text-2xl">✅</span>
+                  <div className="w-10 h-10 sm:w-12 sm:h-12 bg-green-600 rounded-md flex items-center justify-center shadow-md flex-shrink-0">
+                    <svg className="w-5 h-5 sm:w-6 sm:h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/>
+                    </svg>
                   </div>
-                  <div>
-                    <h3 className="font-bold text-green-400">Phase 1 Completed</h3>
-                    <p className="text-sm text-white/60">Proposal Evaluation • 10% weight</p>
+                  <div className="min-w-0">
+                    <h3 className="font-bold text-green-700 text-base sm:text-lg">Phase 1 Completed</h3>
+                    <p className="text-xs sm:text-sm text-green-600">Proposal Evaluation • 10% weight</p>
                   </div>
                 </div>
                 {marksData.breakdown.proposal && (
                   <div className="text-right">
-                    <div className="text-2xl font-bold text-green-300">{marksData.breakdown.proposal.weighted}%</div>
-                    <div className="text-sm text-white/60">{marksData.breakdown.proposal.marks}/{marksData.breakdown.proposal.maxMarks} marks</div>
+                    <div className="text-2xl sm:text-3xl font-bold text-green-600">{marksData.breakdown.proposal.weighted}%</div>
+                    <div className="text-xs sm:text-sm text-green-600">{marksData.breakdown.proposal.marks}/{marksData.breakdown.proposal.maxMarks} marks</div>
                   </div>
                 )}
               </div>
@@ -454,57 +466,57 @@ const StudentDashboard = () => {
 
           {/* Phase 2: Initial Defense */}
           {project && isPhase2Active(project.status) && (
-            <div className="bg-gradient-to-br from-slate-800 to-slate-900 backdrop-blur-sm rounded-xl border border-white/10 p-6 shadow-lg">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="w-12 h-12 bg-gradient-to-br from-purple-900 to-purple-800 rounded-lg flex items-center justify-center">
-                  <span className="text-2xl">🎤</span>
+            <div className="bg-white border-2 border-[#CBD5E1] rounded-md shadow-md hover:shadow-lg transition-shadow p-4 sm:p-6">
+              <div className="flex items-center gap-3 mb-4 sm:mb-5">
+                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-purple-600 to-purple-700 rounded-md flex items-center justify-center shadow-md flex-shrink-0">
+                  <svg className="w-5 h-5 sm:w-6 sm:h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M9 4.804A7.968 7.968 0 005.5 4c-1.255 0-2.443.29-3.5.804v10A7.969 7.969 0 015.5 14c1.669 0 3.218.51 4.5 1.385A7.962 7.962 0 0114.5 14c1.255 0 2.443.29 3.5.804v-10A7.968 7.968 0 0014.5 4c-1.255 0-2.443.29-3.5.804V12a1 1 0 11-2 0V4.804z"/>
+                  </svg>
                 </div>
-                <div>
-                  <h2 className="text-xl font-bold text-white">Phase 2: Initial Defense</h2>
-                  <p className="text-sm text-white/60">Weight: 10% • Presentation evaluation</p>
+                <div className="min-w-0">
+                  <h2 className="text-lg sm:text-xl font-bold text-[#0F172A] break-words">Phase 2: Initial Defense</h2>
+                  <p className="text-xs sm:text-sm text-[#64748B]">Weight: 10% • Presentation evaluation</p>
                 </div>
               </div>
 
               {project.defenseDate ? (
                 <>
-                  <div className="mb-6 p-4 bg-purple-900/30 border border-purple-500/30 rounded-lg">
-                    <div className="flex items-center justify-between">
+                  <div className="mb-4 sm:mb-5 p-3 sm:p-4 bg-purple-50 border-2 border-purple-200 rounded-md">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-0">
                       <div>
-                        <p className="text-sm text-purple-300 font-medium">Scheduled Defense</p>
-                        <p className="text-lg font-bold text-white">{new Date(project.defenseDate).toDateString()}</p>
-                        <p className="text-sm text-white/70">Room: {project.defenseRoom}</p>
+                        <p className="text-xs sm:text-sm text-purple-600 font-semibold">Scheduled Defense</p>
+                        <p className="text-base sm:text-lg font-bold text-purple-900">{new Date(project.defenseDate).toDateString()}</p>
+                        <p className="text-xs sm:text-sm text-purple-700">Room: {project.defenseRoom}</p>
                       </div>
-                      <div className="text-3xl">⚖️</div>
+                      <div className="text-3xl sm:text-4xl">⚖️</div>
                     </div>
                   </div>
 
                   <form onSubmit={(e) => handleUpload(e, 'ppt')} className="space-y-4">
                     <div>
-                      <label className="block text-sm font-medium text-white/80 mb-2">Presentation File (PPT)</label>
-                      <div className="flex items-center gap-3">
-                        <input 
-                          type="file" 
-                          accept=".ppt,.pptx,.pdf" 
-                          onChange={(e) => setPptFile(e.target.files[0])} 
-                          className="flex-1 px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:bg-purple-600 file:text-white hover:file:bg-purple-700 cursor-pointer"
-                        />
-                      </div>
-                      <p className="text-xs text-white/50 mt-2">Upload your defense presentation</p>
+                      <label className="block text-xs sm:text-sm font-bold text-[#0F172A] mb-2">Presentation File (PPT)</label>
+                      <input 
+                        type="file" 
+                        accept=".ppt,.pptx,.pdf" 
+                        onChange={(e) => setPptFile(e.target.files[0])} 
+                        className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-[#F8FAFC] border-2 border-[#CBD5E1] rounded-md text-sm text-[#0F172A] file:mr-3 sm:file:mr-4 file:py-1.5 sm:file:py-2 file:px-3 sm:file:px-4 file:rounded-md file:border-0 file:text-xs sm:file:text-sm file:font-semibold file:bg-purple-600 file:text-white hover:file:bg-purple-700 cursor-pointer"
+                      />
+                      <p className="text-xs text-[#64748B] mt-2">Upload your defense presentation</p>
                     </div>
                     <button 
                       type="submit" 
                       disabled={uploading}
-                      className="w-full bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 text-white font-medium py-3 px-6 rounded-lg transition-all hover:shadow-lg hover:shadow-purple-500/25"
+                      className="w-full bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white font-bold py-2.5 sm:py-3.5 rounded-md transition-all shadow-lg hover:shadow-xl text-sm sm:text-base"
                     >
                       Submit Presentation
                     </button>
                   </form>
                 </>
               ) : (
-                <div className="text-center py-8">
-                  <div className="text-4xl mb-4">⏳</div>
-                  <p className="text-white/80">Waiting for Coordinator to schedule defense...</p>
-                  <p className="text-sm text-white/60 mt-2">You'll be notified when a date is assigned</p>
+                <div className="text-center py-6 sm:py-8 bg-[#F8FAFC] border-2 border-[#E5E7EB] rounded-md">
+                  <div className="text-3xl sm:text-4xl mb-3">⏳</div>
+                  <p className="text-[#0F172A] font-medium text-sm sm:text-base">Waiting for Coordinator to schedule defense...</p>
+                  <p className="text-xs sm:text-sm text-[#64748B] mt-2">You'll be notified when a date is assigned</p>
                 </div>
               )}
             </div>
@@ -512,64 +524,66 @@ const StudentDashboard = () => {
 
           {/* Phase 3: SRS/SDS */}
           {project && (project.status === 'Defense Cleared' || project.srsSdsStatus) && (
-            <div className="bg-gradient-to-br from-slate-800 to-slate-900 backdrop-blur-sm rounded-xl border border-white/10 p-6 shadow-lg">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="w-12 h-12 bg-gradient-to-br from-blue-900 to-blue-800 rounded-lg flex items-center justify-center">
-                  <span className="text-2xl">📋</span>
+            <div className="bg-white border-2 border-[#CBD5E1] rounded-md shadow-md hover:shadow-lg transition-shadow p-4 sm:p-6">
+              <div className="flex items-center gap-3 mb-4 sm:mb-5">
+                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-[#1E40AF] to-[#3B82F6] rounded-md flex items-center justify-center shadow-md flex-shrink-0">
+                  <svg className="w-5 h-5 sm:w-6 sm:h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd"/>
+                  </svg>
                 </div>
-                <div>
-                  <h2 className="text-xl font-bold text-white">Phase 3: SRS/SDS Documentation</h2>
-                  <p className="text-sm text-white/60">Weight: 15% • System documentation</p>
+                <div className="min-w-0">
+                  <h2 className="text-lg sm:text-xl font-bold text-[#0F172A] break-words">Phase 3: SRS/SDS Documentation</h2>
+                  <p className="text-xs sm:text-sm text-[#64748B]">Weight: 15% • System documentation</p>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-4 sm:mb-5">
                 {/* SRS Upload */}
-                <div className="bg-white/5 border border-white/10 rounded-lg p-4">
+                <div className="bg-[#F8FAFC] border-2 border-[#E5E7EB] rounded-md p-3 sm:p-4">
                   <div className="flex items-center gap-2 mb-3">
-                    <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-                      <span className="text-lg">📄</span>
+                    <div className="w-7 h-7 sm:w-8 sm:h-8 bg-[#1E40AF] rounded-md flex items-center justify-center flex-shrink-0">
+                      <span className="text-white text-base sm:text-lg">📄</span>
                     </div>
-                    <h3 className="font-medium text-white">Software Requirements Specification</h3>
+                    <h3 className="font-semibold text-[#0F172A] text-xs sm:text-sm break-words">Software Requirements Specification</h3>
                   </div>
                   <form onSubmit={(e) => handleUpload(e, 'srs')} className="space-y-3">
                     <input 
                       type="file" 
                       onChange={e => setSrsFile(e.target.files[0])} 
-                      className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-white text-sm"
+                      className="w-full px-2 sm:px-3 py-1.5 sm:py-2 bg-white border-2 border-[#CBD5E1] rounded-md text-[#0F172A] text-xs sm:text-sm"
                     />
-                    <button className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded text-sm font-medium transition-colors">
+                    <button className="w-full bg-[#1E40AF] hover:bg-[#1E3A8A] text-white py-2 sm:py-2.5 px-3 sm:px-4 rounded-md text-xs sm:text-sm font-semibold transition-colors shadow-md">
                       Upload SRS
                     </button>
                   </form>
                   {project.srsUrl && (
-                    <div className="mt-3 p-2 bg-green-900/20 border border-green-500/30 rounded text-center">
-                      <span className="text-green-400 text-sm">✅ Uploaded</span>
+                    <div className="mt-3 p-2 bg-green-50 border-2 border-green-200 rounded-md text-center">
+                      <span className="text-green-700 text-xs sm:text-sm font-semibold">✅ Uploaded</span>
                     </div>
                   )}
                 </div>
 
                 {/* SDS Upload */}
-                <div className="bg-white/5 border border-white/10 rounded-lg p-4">
+                <div className="bg-[#F8FAFC] border-2 border-[#E5E7EB] rounded-md p-3 sm:p-4">
                   <div className="flex items-center gap-2 mb-3">
-                    <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-                      <span className="text-lg">📄</span>
+                    <div className="w-7 h-7 sm:w-8 sm:h-8 bg-[#1E40AF] rounded-md flex items-center justify-center flex-shrink-0">
+                      <span className="text-white text-base sm:text-lg">📄</span>
                     </div>
-                    <h3 className="font-medium text-white">Software Design Specification</h3>
+                    <h3 className="font-semibold text-[#0F172A] text-xs sm:text-sm break-words">Software Design Specification</h3>
                   </div>
                   <form onSubmit={(e) => handleUpload(e, 'sds')} className="space-y-3">
                     <input 
                       type="file" 
                       onChange={e => setSdsFile(e.target.files[0])} 
-                      className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-white text-sm"
+                      className="w-full px-2 sm:px-3 py-1.5 sm:py-2 bg-white border-2 border-[#CBD5E1] rounded-md text-[#0F172A] text-xs sm:text-sm"
                     />
-                    <button className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded text-sm font-medium transition-colors">
+                    <button className="w-full bg-[#1E40AF] hover:bg-[#1E3A8A] text-white py-2 sm:py-2.5 px-3 sm:px-4 rounded-md text-xs sm:text-sm font-semibold transition-colors shadow-md">
                       Upload SDS
                     </button>
                   </form>
                   {project.sdsUrl && (
-                    <div className="mt-3 p-2 bg-green-900/20 border border-green-500/30 rounded text-center">
-                      <span className="text-green-400 text-sm">✅ Uploaded</span>
+                    <div className="mt-3 p-2 bg-green-50 border-2 border-green-200 rounded-md text-center">
+                      <span className="text-green-700 text-xs sm:text-sm font-semibold">✅ Uploaded</span>
                     </div>
                   )}
                 </div>
@@ -578,7 +592,7 @@ const StudentDashboard = () => {
               {project.srsUrl && project.sdsUrl && !project.srsSdsStatus && (
                 <button 
                   onClick={() => submitForSrsSdsReview(project._id)}
-                  className="w-full bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 text-white font-medium py-3 px-6 rounded-lg transition-all hover:shadow-lg hover:shadow-purple-500/25 flex items-center justify-center gap-2"
+                  className="w-full bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white font-bold py-2.5 sm:py-3.5 rounded-md transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2 text-sm sm:text-base"
                 >
                   <span>🚀</span>
                   Submit for Review
@@ -586,13 +600,13 @@ const StudentDashboard = () => {
               )}
 
               {project.srsSdsStatus && (
-                <div className="mt-4 p-4 bg-white/5 border border-white/10 rounded-lg">
-                  <div className="flex items-center justify-between">
-                    <span className="text-white/80">Review Status:</span>
-                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                      project.srsSdsStatus === 'Approved' ? 'bg-green-900/30 text-green-400 border border-green-500/30' :
-                      project.srsSdsStatus === 'Rejected' ? 'bg-red-900/30 text-red-400 border border-red-500/30' :
-                      'bg-yellow-900/30 text-yellow-400 border border-yellow-500/30'
+                <div className="mt-4 p-3 sm:p-4 bg-[#F8FAFC] border-2 border-[#E5E7EB] rounded-md">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-0">
+                    <span className="text-[#475569] font-medium text-xs sm:text-sm">Review Status:</span>
+                    <span className={`px-3 py-1.5 rounded-md text-xs font-semibold border-2 ${
+                      project.srsSdsStatus === 'Approved' ? 'bg-green-50 text-green-700 border-green-200' :
+                      project.srsSdsStatus === 'Rejected' ? 'bg-red-50 text-red-700 border-red-200' :
+                      'bg-yellow-50 text-yellow-700 border-yellow-200'
                     }`}>
                       {project.srsSdsStatus}
                     </span>
@@ -602,55 +616,57 @@ const StudentDashboard = () => {
             </div>
           )}
 
-          {/* Phase 4: Development (Weekly Logs) */}
+          {/* Phase 4: Development */}
           {project && (project.status === 'Development Phase' || (project.weeklyLogs && project.weeklyLogs.length > 0)) && (
-            <div className="bg-gradient-to-br from-slate-800 to-slate-900 backdrop-blur-sm rounded-xl border border-white/10 p-6 shadow-lg">
-              <div className="flex items-center justify-between mb-6">
+            <div className="bg-white border-2 border-[#CBD5E1] rounded-md shadow-md hover:shadow-lg transition-shadow p-4 sm:p-6">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0 mb-4 sm:mb-5">
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-gradient-to-br from-emerald-900 to-emerald-800 rounded-lg flex items-center justify-center">
-                    <span className="text-2xl">🛠️</span>
+                  <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-emerald-600 to-emerald-700 rounded-md flex items-center justify-center shadow-md flex-shrink-0">
+                    <svg className="w-5 h-5 sm:w-6 sm:h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M12.316 3.051a1 1 0 01.633 1.265l-4 12a1 1 0 11-1.898-.632l4-12a1 1 0 011.265-.633zM5.707 6.293a1 1 0 010 1.414L3.414 10l2.293 2.293a1 1 0 11-1.414 1.414l-3-3a1 1 0 010-1.414l3-3a1 1 0 011.414 0zm8.586 0a1 1 0 011.414 0l3 3a1 1 0 010 1.414l-3 3a1 1 0 11-1.414-1.414L16.586 10l-2.293-2.293a1 1 0 010-1.414z" clipRule="evenodd"/>
+                    </svg>
                   </div>
-                  <div>
-                    <h2 className="text-xl font-bold text-white">Phase 4: Development</h2>
-                    <p className="text-sm text-white/60">Supervisor meetings & progress tracking</p>
+                  <div className="min-w-0">
+                    <h2 className="text-lg sm:text-xl font-bold text-[#0F172A] break-words">Phase 4: Development</h2>
+                    <p className="text-xs sm:text-sm text-[#64748B]">Supervisor meetings & progress tracking</p>
                   </div>
                 </div>
-                <span className="bg-emerald-900/30 text-emerald-400 text-xs px-3 py-1 rounded-full border border-emerald-500/30">
+                <span className="bg-emerald-50 text-emerald-700 text-xs font-semibold px-3 py-1.5 rounded-md border-2 border-emerald-200">
                   Active
                 </span>
               </div>
 
               {/* Meeting Scheduler */}
-              <div className="bg-white/5 border border-white/10 rounded-xl p-5 mb-6">
-                <h3 className="text-lg font-medium text-white mb-4 flex items-center gap-2">
-                  <span className="text-xl">📅</span>
+              <div className="bg-[#F8FAFC] border-2 border-[#E5E7EB] rounded-md p-4 sm:p-5 mb-4 sm:mb-5">
+                <h3 className="text-base sm:text-lg font-semibold text-[#0F172A] mb-3 sm:mb-4 flex items-center gap-2">
+                  <span className="text-lg sm:text-xl">📅</span>
                   Schedule Weekly Meeting
                 </h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-white/80 mb-2">Week Number</label>
+                    <label className="block text-xs sm:text-sm font-bold text-[#0F172A] mb-2">Week Number</label>
                     <input 
                       type="number" 
                       min="1" max="16" 
                       value={meetingWeek} 
                       onChange={(e) => setMeetingWeek(e.target.value)}
-                      className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/40"
+                      className="w-full px-3 sm:px-4 py-2 sm:py-2.5 bg-white border-2 border-[#CBD5E1] rounded-md text-sm sm:text-base text-[#0F172A] placeholder-[#94A3B8] focus:border-[#1E40AF] focus:ring-2 focus:ring-[#1E40AF]/20 focus:outline-none"
                       placeholder="Week"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-white/80 mb-2">Meeting Date</label>
+                    <label className="block text-xs sm:text-sm font-bold text-[#0F172A] mb-2">Meeting Date</label>
                     <input 
                       type="date" 
                       value={meetingDate} 
                       onChange={(e) => setMeetingDate(e.target.value)}
-                      className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/40"
+                      className="w-full px-3 sm:px-4 py-2 sm:py-2.5 bg-white border-2 border-[#CBD5E1] rounded-md text-sm sm:text-base text-[#0F172A] focus:border-[#1E40AF] focus:ring-2 focus:ring-[#1E40AF]/20 focus:outline-none"
                     />
                   </div>
                   <div className="flex items-end">
                     <button 
                       onClick={requestMeeting}
-                      className="w-full bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-white font-medium py-2 px-4 rounded-lg transition-all"
+                      className="w-full bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white font-bold py-2 sm:py-2.5 rounded-md transition-all shadow-md text-sm sm:text-base"
                     >
                       Request Meeting
                     </button>
@@ -660,56 +676,56 @@ const StudentDashboard = () => {
 
               {/* Logs Display */}
               <div className="space-y-4">
-                <h3 className="text-lg font-medium text-white flex items-center gap-2">
-                  <span className="text-xl">📋</span>
+                <h3 className="text-base sm:text-lg font-semibold text-[#0F172A] flex items-center gap-2">
+                  <span className="text-lg sm:text-xl">📋</span>
                   Weekly Logs
                 </h3>
                 
                 {project.weeklyLogs && project.weeklyLogs.length > 0 ? (
                   <div className="space-y-3">
                     {project.weeklyLogs.sort((a,b) => a.weekNumber - b.weekNumber).map((log, index) => (
-                      <div key={index} className="bg-white/5 border border-white/10 rounded-lg p-4">
-                        <div className="flex items-center justify-between mb-3">
-                          <div className="flex items-center gap-2">
-                            <span className="bg-blue-900/30 text-blue-400 px-3 py-1 rounded-full text-sm font-medium">
+                      <div key={index} className="bg-[#F8FAFC] border-2 border-[#E5E7EB] rounded-md p-3 sm:p-4">
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-0 mb-3">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="bg-[#1E40AF] text-white px-2.5 sm:px-3 py-1 rounded-md text-xs sm:text-sm font-semibold">
                               Week {log.weekNumber}
                             </span>
-                            <span className="text-sm text-white/60">
+                            <span className="text-xs sm:text-sm text-[#64748B] font-medium">
                               {new Date(log.meetingDate).toLocaleDateString()}
                             </span>
                           </div>
-                          <span className={`px-2 py-1 rounded text-xs font-medium ${
-                            log.meetingStatus === 'Accepted' ? 'bg-green-900/30 text-green-400 border border-green-500/30' :
-                            log.meetingStatus === 'Pending' ? 'bg-yellow-900/30 text-yellow-400 border border-yellow-500/30' :
-                            'bg-red-900/30 text-red-400 border border-red-500/30'
+                          <span className={`px-2.5 sm:px-3 py-1 rounded-md text-xs font-semibold border-2 ${
+                            log.meetingStatus === 'Accepted' ? 'bg-green-50 text-green-700 border-green-200' :
+                            log.meetingStatus === 'Pending' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
+                            'bg-red-50 text-red-700 border-red-200'
                           }`}>
                             {log.meetingStatus}
                           </span>
                         </div>
                         
                         {log.content ? (
-                          <div className="bg-white/5 border border-white/10 rounded p-3">
+                          <div className="bg-white border-2 border-[#E5E7EB] rounded-md p-3">
                             <div className="flex items-center gap-2 mb-2">
-                              <div className="w-6 h-6 bg-emerald-600 rounded-full flex items-center justify-center">
+                              <div className="w-5 h-5 sm:w-6 sm:h-6 bg-emerald-600 rounded-full flex items-center justify-center flex-shrink-0">
                                 <span className="text-xs">👨‍🏫</span>
                               </div>
-                              <span className="text-sm font-medium text-emerald-400">Supervisor Log</span>
+                              <span className="text-xs sm:text-sm font-semibold text-emerald-700">Supervisor Log</span>
                             </div>
-                            <p className="text-sm text-white/80">{log.content}</p>
+                            <p className="text-xs sm:text-sm text-[#475569] break-words">{log.content}</p>
                           </div>
                         ) : (
-                          <div className="text-center py-4 border border-white/10 rounded">
-                            <span className="text-white/50 italic">Waiting for supervisor entry...</span>
+                          <div className="text-center py-3 sm:py-4 border-2 border-[#E5E7EB] rounded-md bg-white">
+                            <span className="text-[#94A3B8] italic text-xs sm:text-sm">Waiting for supervisor entry...</span>
                           </div>
                         )}
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <div className="text-center py-8 border border-white/10 rounded-lg">
-                    <div className="text-3xl mb-3">📭</div>
-                    <p className="text-white/80">No meetings scheduled yet</p>
-                    <p className="text-sm text-white/60 mt-1">Schedule your first meeting above</p>
+                  <div className="text-center py-6 sm:py-8 border-2 border-[#E5E7EB] rounded-md bg-[#F8FAFC]">
+                    <div className="text-3xl sm:text-4xl mb-3">📭</div>
+                    <p className="text-[#0F172A] font-medium text-sm sm:text-base">No meetings scheduled yet</p>
+                    <p className="text-xs sm:text-sm text-[#64748B] mt-1">Schedule your first meeting above</p>
                   </div>
                 )}
               </div>
@@ -718,53 +734,53 @@ const StudentDashboard = () => {
 
           {/* Phase 5: Final Defense */}
           {project && (project.status === 'Final Defense Scheduled' || project.status === 'Final Defense Pending' || project.status === 'Project Completed' || project.finalDefense?.scheduledDate) && (
-            <div className="bg-gradient-to-br from-red-900/30 to-red-900/10 backdrop-blur-sm rounded-xl border border-red-500/30 p-6 shadow-lg">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="w-12 h-12 bg-gradient-to-br from-red-900 to-red-800 rounded-lg flex items-center justify-center">
-                  <span className="text-2xl">🎓</span>
+            <div className="bg-white border-2 border-[#CBD5E1] rounded-md shadow-md hover:shadow-lg transition-shadow p-4 sm:p-6">
+              <div className="flex items-center gap-3 mb-4 sm:mb-5">
+                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-red-600 to-red-700 rounded-md flex items-center justify-center shadow-md flex-shrink-0">
+                  <svg className="w-5 h-5 sm:w-6 sm:h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M10.394 2.08a1 1 0 00-.788 0l-7 3a1 1 0 000 1.84L5.25 8.051a.999.999 0 01.356-.257l4-1.714a1 1 0 11.788 1.838L7.667 9.088l1.94.831a1 1 0 00.787 0l7-3a1 1 0 000-1.838l-7-3zM3.31 9.397L5 10.12v4.102a8.969 8.969 0 00-1.05-.174 1 1 0 01-.89-.89 11.115 11.115 0 01.25-3.762zM9.3 16.573A9.026 9.026 0 007 14.935v-3.957l1.818.78a3 3 0 002.364 0l5.508-2.361a11.026 11.026 0 01.25 3.762 1 1 0 01-.89.89 8.968 8.968 0 00-5.35 2.524 1 1 0 01-1.4 0zM6 18a1 1 0 001-1v-2.065a8.935 8.935 0 00-2-.712V17a1 1 0 001 1z"/>
+                  </svg>
                 </div>
-                <div>
-                  <h2 className="text-xl font-bold text-white">Phase 5: Final Defense</h2>
-                  <p className="text-sm text-white/60">Weight: 65% • Comprehensive evaluation</p>
+                <div className="min-w-0">
+                  <h2 className="text-lg sm:text-xl font-bold text-[#0F172A] break-words">Phase 5: Final Defense</h2>
+                  <p className="text-xs sm:text-sm text-[#64748B]">Weight: 65% • Comprehensive evaluation</p>
                 </div>
               </div>
 
               {/* Defense Schedule */}
-              <div className="mb-6 p-5 bg-white/5 border border-white/10 rounded-xl text-center">
-                <div className="text-sm text-white/60 mb-2">Final Defense Date</div>
-                <div className="text-2xl font-bold text-white mb-2">
+              <div className="mb-4 sm:mb-5 p-4 sm:p-5 bg-red-50 border-2 border-red-200 rounded-md text-center">
+                <div className="text-xs sm:text-sm text-red-600 font-semibold mb-2">Final Defense Date</div>
+                <div className="text-xl sm:text-2xl font-bold text-red-900 mb-2 break-words">
                   {project.finalDefense?.scheduledDate ? new Date(project.finalDefense.scheduledDate).toDateString() : "To Be Announced"}
                 </div>
                 {project.finalDefense?.venue && (
-                  <div className="text-sm text-white/80">Venue: {project.finalDefense.venue}</div>
+                  <div className="text-xs sm:text-sm text-red-700 font-medium">Venue: {project.finalDefense.venue}</div>
                 )}
               </div>
 
               {/* Final PPT Upload */}
-              <div className="mb-6">
-                <h3 className="text-lg font-medium text-white mb-4 flex items-center gap-2">
-                  <span className="text-xl">📊</span>
+              <div className="mb-4 sm:mb-5">
+                <h3 className="text-base sm:text-lg font-semibold text-[#0F172A] mb-3 sm:mb-4 flex items-center gap-2">
+                  <span className="text-lg sm:text-xl">📊</span>
                   Final Presentation Upload
                 </h3>
                 <form onSubmit={(e) => handleUpload(e, 'final-ppt')} className="space-y-4">
-                  <div className="flex items-center gap-3">
-                    <input 
-                      type="file" 
-                      onChange={(e) => setFinalPptFile(e.target.files[0])} 
-                      className="flex-1 px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:bg-red-600 file:text-white hover:file:bg-red-700 cursor-pointer"
-                    />
-                  </div>
+                  <input 
+                    type="file" 
+                    onChange={(e) => setFinalPptFile(e.target.files[0])} 
+                    className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-[#F8FAFC] border-2 border-[#CBD5E1] rounded-md text-sm text-[#0F172A] file:mr-3 sm:file:mr-4 file:py-1.5 sm:file:py-2 file:px-3 sm:file:px-4 file:rounded-md file:border-0 file:text-xs sm:file:text-sm file:font-semibold file:bg-red-600 file:text-white hover:file:bg-red-700 cursor-pointer"
+                  />
                   <button 
                     type="submit" 
                     disabled={uploading}
-                    className="w-full bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white font-medium py-3 px-6 rounded-lg transition-all hover:shadow-lg hover:shadow-red-500/25"
+                    className="w-full bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-bold py-2.5 sm:py-3.5 rounded-md transition-all shadow-lg hover:shadow-xl text-sm sm:text-base"
                   >
                     Upload Final Presentation
                   </button>
                 </form>
                 {project.finalDefense?.finalPptUrl && (
-                  <div className="mt-3 p-3 bg-green-900/20 border border-green-500/30 rounded-lg text-center">
-                    <span className="text-green-400">✅ Final PPT Uploaded Successfully</span>
+                  <div className="mt-3 p-2 sm:p-3 bg-green-50 border-2 border-green-200 rounded-md text-center">
+                    <span className="text-green-700 font-semibold text-xs sm:text-sm">✅ Final PPT Uploaded Successfully</span>
                   </div>
                 )}
               </div>
@@ -772,41 +788,41 @@ const StudentDashboard = () => {
               {/* Final Evaluation Breakdown */}
               {project.finalDefense?.marks && (
                 <div className="space-y-4">
-                  <h3 className="text-lg font-medium text-white flex items-center gap-2">
-                    <span className="text-xl">🏆</span>
+                  <h3 className="text-base sm:text-lg font-semibold text-[#0F172A] flex items-center gap-2">
+                    <span className="text-lg sm:text-xl">🏆</span>
                     Final Evaluation Breakdown
                   </h3>
                   
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-white/5 border border-white/10 rounded-lg p-4">
-                      <div className="text-sm text-white/60 mb-1">Coordinator</div>
-                      <div className="text-2xl font-bold text-green-400">{project.finalDefense.marks.coordinator || '0'}<span className="text-sm text-white/60">/15</span></div>
-                      <div className="text-xs text-white/60">15% weight</div>
+                  <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                    <div className="bg-[#F8FAFC] border-2 border-[#E5E7EB] rounded-md p-3 sm:p-4">
+                      <div className="text-xs sm:text-sm text-[#64748B] font-medium mb-1">Coordinator</div>
+                      <div className="text-xl sm:text-2xl font-bold text-[#1E40AF]">{project.finalDefense.marks.coordinator || '0'}<span className="text-xs sm:text-sm text-[#64748B]">/15</span></div>
+                      <div className="text-xs text-[#64748B]">15% weight</div>
                     </div>
-                    <div className="bg-white/5 border border-white/10 rounded-lg p-4">
-                      <div className="text-sm text-white/60 mb-1">Supervisor</div>
-                      <div className="text-2xl font-bold text-green-400">{project.finalDefense.marks.supervisor || '0'}<span className="text-sm text-white/60">/15</span></div>
-                      <div className="text-xs text-white/60">15% weight</div>
+                    <div className="bg-[#F8FAFC] border-2 border-[#E5E7EB] rounded-md p-3 sm:p-4">
+                      <div className="text-xs sm:text-sm text-[#64748B] font-medium mb-1">Supervisor</div>
+                      <div className="text-xl sm:text-2xl font-bold text-[#1E40AF]">{project.finalDefense.marks.supervisor || '0'}<span className="text-xs sm:text-sm text-[#64748B]">/15</span></div>
+                      <div className="text-xs text-[#64748B]">15% weight</div>
                     </div>
-                    <div className="bg-white/5 border border-white/10 rounded-lg p-4">
-                      <div className="text-sm text-white/60 mb-1">Panel</div>
-                      <div className="text-2xl font-bold text-green-400">{project.finalDefense.marks.panel || '0'}<span className="text-sm text-white/60">/25</span></div>
-                      <div className="text-xs text-white/60">25% weight</div>
+                    <div className="bg-[#F8FAFC] border-2 border-[#E5E7EB] rounded-md p-3 sm:p-4">
+                      <div className="text-xs sm:text-sm text-[#64748B] font-medium mb-1">Panel</div>
+                      <div className="text-xl sm:text-2xl font-bold text-[#1E40AF]">{project.finalDefense.marks.panel || '0'}<span className="text-xs sm:text-sm text-[#64748B]">/25</span></div>
+                      <div className="text-xs text-[#64748B]">25% weight</div>
                     </div>
-                    <div className="bg-white/5 border border-white/10 rounded-lg p-4">
-                      <div className="text-sm text-white/60 mb-1">External</div>
-                      <div className="text-2xl font-bold text-green-400">{project.finalDefense.marks.external || '0'}<span className="text-sm text-white/60">/10</span></div>
-                      <div className="text-xs text-white/60">10% weight</div>
+                    <div className="bg-[#F8FAFC] border-2 border-[#E5E7EB] rounded-md p-3 sm:p-4">
+                      <div className="text-xs sm:text-sm text-[#64748B] font-medium mb-1">External</div>
+                      <div className="text-xl sm:text-2xl font-bold text-[#1E40AF]">{project.finalDefense.marks.external || '0'}<span className="text-xs sm:text-sm text-[#64748B]">/10</span></div>
+                      <div className="text-xs text-[#64748B]">10% weight</div>
                     </div>
                   </div>
 
                   {marksData.breakdown.finalDefense && (
-                    <div className="bg-gradient-to-r from-white/5 to-transparent border border-white/10 rounded-lg p-4">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-white/80">Final Defense Total:</span>
-                        <span className="text-xl font-bold text-white">{marksData.breakdown.finalDefense.weighted.total}%</span>
+                    <div className="bg-gradient-to-r from-[#EFF6FF] to-[#DBEAFE] border-2 border-[#BFDBFE] rounded-md p-3 sm:p-4">
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-0 mb-2">
+                        <span className="text-[#0F172A] font-medium text-sm sm:text-base">Final Defense Total:</span>
+                        <span className="text-lg sm:text-xl font-bold text-[#1E40AF]">{marksData.breakdown.finalDefense.weighted.total}%</span>
                       </div>
-                      <div className="text-sm text-white/60">
+                      <div className="text-xs sm:text-sm text-[#475569]">
                         Raw Score: {marksData.breakdown.finalDefense.rawTotal}/{marksData.breakdown.finalDefense.maxRawTotal}
                       </div>
                     </div>
@@ -815,10 +831,10 @@ const StudentDashboard = () => {
               )}
 
               {project.status === 'Project Completed' && (
-                <div className="mt-6 p-5 bg-gradient-to-r from-emerald-600 to-green-600 rounded-xl text-center animate-pulse">
-                  <div className="text-2xl mb-2">🎉</div>
-                  <h3 className="text-xl font-bold text-white">FYP Process Completed</h3>
-                  <p className="text-white/90 mt-1">Congratulations on completing your Final Year Project!</p>
+                <div className="mt-5 sm:mt-6 p-4 sm:p-5 bg-gradient-to-r from-emerald-600 to-green-600 rounded-md text-center shadow-lg">
+                  <div className="text-2xl sm:text-3xl mb-2">🎉</div>
+                  <h3 className="text-lg sm:text-xl font-bold text-white">FYP Process Completed</h3>
+                  <p className="text-white/90 mt-1 text-sm sm:text-base">Congratulations on completing your Final Year Project!</p>
                 </div>
               )}
             </div>
@@ -826,43 +842,43 @@ const StudentDashboard = () => {
 
         </div>
 
-        {/* RIGHT COLUMN: STATUS & MARKS */}
-        <div className="space-y-6">
+        {/* RIGHT COLUMN: STATUS & MARKS (sticky on desktop only) */}
+        <div className="space-y-4 sm:space-y-6">
           
           {/* Project Status Card */}
-          <div className="bg-gradient-to-br from-slate-800 to-slate-900 backdrop-blur-sm rounded-xl border border-white/10 p-6 shadow-lg">
-            <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
-              <span className="text-2xl">📊</span>
-              Project Status Overview
+          <div className="bg-white border-2 border-[#CBD5E1] rounded-md shadow-md p-4 sm:p-6 lg:sticky lg:top-6">
+            <h2 className="text-lg sm:text-xl font-bold text-[#0F172A] mb-4 sm:mb-5 flex items-center gap-2">
+              <span className="text-xl sm:text-2xl">📊</span>
+              Project Status
             </h2>
 
             {!project ? (
-              <div className="text-center py-8">
-                <div className="text-3xl mb-3">📭</div>
-                <p className="text-white/80">No project data available</p>
-                <p className="text-sm text-white/60 mt-1">Submit a proposal to get started</p>
+              <div className="text-center py-6 sm:py-8 bg-[#F8FAFC] border-2 border-[#E5E7EB] rounded-md">
+                <div className="text-3xl sm:text-4xl mb-3">📭</div>
+                <p className="text-[#0F172A] font-medium text-sm sm:text-base">No project data</p>
+                <p className="text-xs sm:text-sm text-[#64748B] mt-1">Submit a proposal to start</p>
               </div>
             ) : (
-              <div className="space-y-6">
+              <div className="space-y-4 sm:space-y-5">
                 {/* Current Status */}
-                <div className="bg-white/5 border border-white/10 rounded-lg p-4">
-                  <div className="text-sm text-white/60 mb-2">Current Status</div>
-                  <div className="flex items-center justify-between">
-                    <span className={`px-4 py-2 rounded-full text-sm font-medium ${
-                      project.status.includes('Approved') ? 'bg-green-900/30 text-green-400 border border-green-500/30' :
-                      project.status.includes('Rejected') ? 'bg-red-900/30 text-red-400 border border-red-500/30' :
-                      project.status.includes('Pending') ? 'bg-yellow-900/30 text-yellow-400 border border-yellow-500/30' :
-                      'bg-blue-900/30 text-blue-400 border border-blue-500/30'
+                <div className="bg-[#F8FAFC] border-2 border-[#E5E7EB] rounded-md p-3 sm:p-4">
+                  <div className="text-xs sm:text-sm text-[#64748B] font-medium mb-2">Current Status</div>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className={`px-2.5 sm:px-3 py-1.5 rounded-md text-xs font-semibold border-2 break-words ${
+                      project.status.includes('Approved') ? 'bg-green-50 text-green-700 border-green-200' :
+                      project.status.includes('Rejected') ? 'bg-red-50 text-red-700 border-red-200' :
+                      project.status.includes('Pending') ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
+                      'bg-blue-50 text-blue-700 border-blue-200'
                     }`}>
                       {project.status}
                     </span>
-                    <div className="text-2xl">⚡</div>
+                    <div className="text-xl sm:text-2xl flex-shrink-0">⚡</div>
                   </div>
                 </div>
 
                 {/* Timeline */}
                 <div>
-                  <h3 className="text-lg font-medium text-white mb-4">Project Timeline</h3>
+                  <h3 className="text-base sm:text-lg font-semibold text-[#0F172A] mb-3 sm:mb-4">Timeline</h3>
                   <div className="space-y-3">
                     <TimelineItem 
                       done={true} 
@@ -899,21 +915,21 @@ const StudentDashboard = () => {
           </div>
 
           {/* Grading Summary Card */}
-          <div className="bg-gradient-to-br from-purple-900/30 to-blue-900/30 backdrop-blur-sm rounded-xl border border-purple-500/30 p-6 shadow-lg">
-            <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
-              <span className="text-2xl">🏆</span>
+          <div className="bg-gradient-to-br from-purple-50 to-blue-50 border-2 border-purple-200 rounded-md shadow-md p-4 sm:p-6">
+            <h2 className="text-lg sm:text-xl font-bold text-[#0F172A] mb-4 sm:mb-5 flex items-center gap-2">
+              <span className="text-xl sm:text-2xl">🏆</span>
               Grading Summary
             </h2>
 
             {marksData.total > 0 ? (
-              <div className="space-y-6">
+              <div className="space-y-4 sm:space-y-5">
                 {/* Overall Grade */}
-                <div className="text-center">
-                  <div className="text-4xl font-bold text-white mb-2">{marksData.total}%</div>
-                  <div className="text-xl font-bold text-purple-300 mb-3">{marksData.letterGrade}</div>
-                  <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium ${
-                    marksData.isComplete ? 'bg-green-900/30 text-green-400 border border-green-500/30' :
-                    'bg-blue-900/30 text-blue-400 border border-blue-500/30'
+                <div className="text-center bg-white border-2 border-purple-200 rounded-md p-4 sm:p-5">
+                  <div className="text-4xl sm:text-5xl font-bold text-[#1E40AF] mb-2">{marksData.total}%</div>
+                  <div className="text-xl sm:text-2xl font-bold text-purple-600 mb-3">{marksData.letterGrade}</div>
+                  <div className={`inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-md text-xs sm:text-sm font-semibold border-2 ${
+                    marksData.isComplete ? 'bg-green-50 text-green-700 border-green-200' :
+                    'bg-blue-50 text-blue-700 border-blue-200'
                   }`}>
                     {marksData.isComplete ? '✅ Evaluation Complete' : '⏳ Evaluation In Progress'}
                   </div>
@@ -921,86 +937,86 @@ const StudentDashboard = () => {
 
                 {/* Weight Distribution */}
                 <div>
-                  <h3 className="text-lg font-medium text-white mb-4">Weight Distribution</h3>
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
+                  <h3 className="text-base sm:text-lg font-semibold text-[#0F172A] mb-2 sm:mb-3">Weight Distribution</h3>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between p-2 bg-white rounded-md">
                       <div className="flex items-center gap-2">
-                        <div className="w-3 h-3 bg-purple-500 rounded-full"></div>
-                        <span className="text-white/80">Proposal Defense</span>
+                        <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 bg-purple-500 rounded-full flex-shrink-0"></div>
+                        <span className="text-xs sm:text-sm text-[#475569]">Proposal Defense</span>
                       </div>
-                      <span className="font-medium text-purple-300">10%</span>
+                      <span className="font-semibold text-purple-600 text-xs sm:text-sm">10%</span>
                     </div>
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between p-2 bg-white rounded-md">
                       <div className="flex items-center gap-2">
-                        <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-                        <span className="text-white/80">Initial Defense</span>
+                        <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 bg-blue-500 rounded-full flex-shrink-0"></div>
+                        <span className="text-xs sm:text-sm text-[#475569]">Initial Defense</span>
                       </div>
-                      <span className="font-medium text-blue-300">10%</span>
+                      <span className="font-semibold text-blue-600 text-xs sm:text-sm">10%</span>
                     </div>
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between p-2 bg-white rounded-md">
                       <div className="flex items-center gap-2">
-                        <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-                        <span className="text-white/80">SRS/SDS Documentation</span>
+                        <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 bg-blue-500 rounded-full flex-shrink-0"></div>
+                        <span className="text-xs sm:text-sm text-[#475569]">SRS/SDS Documentation</span>
                       </div>
-                      <span className="font-medium text-blue-300">15%</span>
+                      <span className="font-semibold text-blue-600 text-xs sm:text-sm">15%</span>
                     </div>
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between p-2 bg-white rounded-md">
                       <div className="flex items-center gap-2">
-                        <div className="w-3 h-3 bg-red-500 rounded-full"></div>
-                        <span className="text-white/80">Final Defense</span>
+                        <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 bg-red-500 rounded-full flex-shrink-0"></div>
+                        <span className="text-xs sm:text-sm text-[#475569]">Final Defense</span>
                       </div>
-                      <span className="font-medium text-red-300">65%</span>
+                      <span className="font-semibold text-red-600 text-xs sm:text-sm">65%</span>
                     </div>
                   </div>
                 </div>
 
                 {/* Current Breakdown */}
                 <div>
-                  <h3 className="text-lg font-medium text-white mb-4">Current Breakdown</h3>
-                  <div className="space-y-3">
+                  <h3 className="text-base sm:text-lg font-semibold text-[#0F172A] mb-2 sm:mb-3">Current Breakdown</h3>
+                  <div className="space-y-2">
                     {marksData.breakdown.proposal && (
-                      <div className="bg-white/5 border border-white/10 rounded-lg p-3">
+                      <div className="bg-white border-2 border-[#E5E7EB] rounded-md p-2.5 sm:p-3">
                         <div className="flex justify-between items-center mb-1">
-                          <span className="text-sm text-purple-400">Proposal Defense</span>
-                          <span className="text-sm text-green-400 font-medium">+{marksData.breakdown.proposal.weighted}%</span>
+                          <span className="text-xs sm:text-sm text-purple-600 font-medium">Proposal Defense</span>
+                          <span className="text-xs sm:text-sm text-green-600 font-bold">+{marksData.breakdown.proposal.weighted}%</span>
                         </div>
-                        <div className="text-xs text-white/60">
+                        <div className="text-xs text-[#64748B]">
                           Marks: {marksData.breakdown.proposal.marks}/{marksData.breakdown.proposal.maxMarks}
                         </div>
                       </div>
                     )}
 
                     {marksData.breakdown.initialDefense && (
-                      <div className="bg-white/5 border border-white/10 rounded-lg p-3">
+                      <div className="bg-white border-2 border-[#E5E7EB] rounded-md p-2.5 sm:p-3">
                         <div className="flex justify-between items-center mb-1">
-                          <span className="text-sm text-blue-400">Initial Defense</span>
-                          <span className="text-sm text-green-400 font-medium">+{marksData.breakdown.initialDefense.weighted}%</span>
+                          <span className="text-xs sm:text-sm text-blue-600 font-medium">Initial Defense</span>
+                          <span className="text-xs sm:text-sm text-green-600 font-bold">+{marksData.breakdown.initialDefense.weighted}%</span>
                         </div>
-                        <div className="text-xs text-white/60">
+                        <div className="text-xs text-[#64748B]">
                           Average: {marksData.breakdown.initialDefense.average}/{marksData.breakdown.initialDefense.maxMarks}
                         </div>
                       </div>
                     )}
 
                     {marksData.breakdown.srsSds && (
-                      <div className="bg-white/5 border border-white/10 rounded-lg p-3">
+                      <div className="bg-white border-2 border-[#E5E7EB] rounded-md p-2.5 sm:p-3">
                         <div className="flex justify-between items-center mb-1">
-                          <span className="text-sm text-blue-400">SRS/SDS Documentation</span>
-                          <span className="text-sm text-green-400 font-medium">+{marksData.breakdown.srsSds.weighted}%</span>
+                          <span className="text-xs sm:text-sm text-blue-600 font-medium">SRS/SDS Documentation</span>
+                          <span className="text-xs sm:text-sm text-green-600 font-bold">+{marksData.breakdown.srsSds.weighted}%</span>
                         </div>
-                        <div className="text-xs text-white/60">
+                        <div className="text-xs text-[#64748B]">
                           Average: {marksData.breakdown.srsSds.average}/{marksData.breakdown.srsSds.maxMarks}
                         </div>
                       </div>
                     )}
 
                     {marksData.breakdown.finalDefense && (
-                      <div className="bg-white/5 border border-white/10 rounded-lg p-3">
+                      <div className="bg-white border-2 border-[#E5E7EB] rounded-md p-2.5 sm:p-3">
                         <div className="flex justify-between items-center mb-1">
-                          <span className="text-sm text-red-400">Final Defense</span>
-                          <span className="text-sm text-green-400 font-medium">+{marksData.breakdown.finalDefense.weighted.total}%</span>
+                          <span className="text-xs sm:text-sm text-red-600 font-medium">Final Defense</span>
+                          <span className="text-xs sm:text-sm text-green-600 font-bold">+{marksData.breakdown.finalDefense.weighted.total}%</span>
                         </div>
-                        <div className="text-xs text-white/60">
+                        <div className="text-xs text-[#64748B]">
                           Total: {marksData.breakdown.finalDefense.rawTotal}/{marksData.breakdown.finalDefense.maxRawTotal}
                         </div>
                       </div>
@@ -1009,10 +1025,10 @@ const StudentDashboard = () => {
                 </div>
               </div>
             ) : (
-              <div className="text-center py-8">
-                <div className="text-4xl mb-4">📊</div>
-                <p className="text-white/80 mb-2">Marks will appear here as evaluation progresses</p>
-                <p className="text-sm text-white/60">Complete each phase to see your marks</p>
+              <div className="text-center py-6 sm:py-8 bg-white border-2 border-[#E5E7EB] rounded-md">
+                <div className="text-3xl sm:text-4xl mb-3">📊</div>
+                <p className="text-[#0F172A] font-medium mb-2 text-sm sm:text-base">Marks will appear as you progress</p>
+                <p className="text-xs sm:text-sm text-[#64748B]">Complete each phase to see your marks</p>
               </div>
             )}
           </div>
@@ -1024,21 +1040,23 @@ const StudentDashboard = () => {
   );
 };
 
-// UI Component: Timeline Item
+// Timeline Item Component
 const TimelineItem = ({ done, label, date }) => (
-  <div className="flex items-start gap-3">
-    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${done ? 'bg-green-500/20 border border-green-500/30' : 'bg-white/10 border border-white/20'}`}>
+  <div className="flex items-start gap-2 sm:gap-3">
+    <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center border-2 flex-shrink-0 ${
+      done ? 'bg-green-50 border-green-500' : 'bg-gray-50 border-gray-300'
+    }`}>
       {done ? (
-        <svg className="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
         </svg>
       ) : (
-        <div className="w-2 h-2 bg-white/40 rounded-full"></div>
+        <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-gray-300 rounded-full"></div>
       )}
     </div>
-    <div className="flex-1">
-      <p className={`text-sm ${done ? 'text-white' : 'text-white/60'}`}>{label}</p>
-      {date && <p className="text-xs text-white/40">{date}</p>}
+    <div className="flex-1 min-w-0">
+      <p className={`text-xs sm:text-sm font-medium break-words ${done ? 'text-[#0F172A]' : 'text-[#94A3B8]'}`}>{label}</p>
+      {date && <p className="text-xs text-[#64748B]">{date}</p>}
     </div>
   </div>
 );
