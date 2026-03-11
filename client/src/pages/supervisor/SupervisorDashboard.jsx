@@ -239,12 +239,12 @@ const SupervisorDashboard = () => {
           <div className="flex items-center gap-4">
             <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center shadow">
               <div className="text-center">
-               <img>
+          
                <img src="/bu-logo.png" alt="BU Logo" className="w-full h-full object-contain"
                     onError={(e) => { e.target.style.display = 'none'; e.target.parentElement.innerHTML = '<span class="text-[#0F172A] text-xs font-bold">BU</span>'; }}
                   />
                
-               </img>
+             
              
               </div>
             </div>
