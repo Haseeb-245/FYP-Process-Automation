@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
+
 const StudentDashboard = () => {
   const navigate = useNavigate();
   const [student, setStudent] = useState(null);
@@ -325,8 +326,10 @@ const StudentDashboard = () => {
           <div className="flex items-center gap-4">
             <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center shadow">
               <div className="text-center">
-                <div className="text-[9px] font-bold text-[#0a2342] leading-tight">BU</div>
-                <div className="text-[7px] font-bold text-[#0a2342] leading-tight">FYP</div>
+                <div className="text-[9px] font-bold text-[#0a2342] leading-tight">
+                  <img src="/bu-logo.png" alt="BU Logo" className="w-full h-full object-contain" />
+                </div>
+           
               </div>
             </div>
             <div>

@@ -136,7 +136,7 @@ console.log(`   ✅ ${external.name} | ${external.email}`);
     console.log("   Password: 123");
     
     console.log("\n📙 SUPERVISORS LOGIN:");
-    console.log("   Email: ahmed.khan@uni.edu");
+    console.log("   Email: supervisor@uni.edu");
     console.log("   Email: sara.ali@uni.edu");
     console.log("   Email: hassan.raza@uni.edu");
     console.log("   Email: fatima.sheikh@uni.edu");

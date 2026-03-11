@@ -41,7 +41,7 @@ const Landing = () => {
           console.log("Student Login Successful:", data);
           navigate('/student/dashboard');
         } else {
-          alert("Login Failed: " + (data.message || "Invalid credentials"));
+          alert("Login Failed: " + (data.message || "Enrollment should be 01-134192-029 and password should be 123"));
         }
       } catch (error) {
         console.error("Login Error:", error);
@@ -79,7 +79,7 @@ const Landing = () => {
           console.log("Coordinator Login Successful:", data);
           navigate('/coordinator/dashboard');
         } else {
-          alert("Login Failed: " + (data.message || "Invalid credentials"));
+          alert("Login Failed: " + (data.message || "Email should be coordinator@university.edu.pk and password should be 123"));
         }
       } catch (error) {
         console.error("Login Error:", error);
@@ -116,7 +116,7 @@ const Landing = () => {
           console.log("Supervisor Login Successful:", data);
           navigate('/supervisor/dashboard');
         } else {
-          alert("Login Failed: " + (data.message || "Invalid credentials"));
+          alert("Login Failed: " + (data.message || "Email should be supervisor@university.edu.pk and password should be 123"));
         }
       } catch (error) {
         console.error("Login Error:", error);
@@ -169,7 +169,7 @@ const Landing = () => {
             navigate('/board/dashboard'); // Panel Member dashboard
           }
         } else {
-          alert("Login Failed: " + (data.message || "Invalid credentials"));
+          alert("Login Failed: " + (data.message || "Email should be panel@uni.edu or external@uni.edu and password should be 123"));
         }
       } catch (error) {
         console.error("Login Error:", error);
@@ -382,7 +382,7 @@ const Landing = () => {
                     type="text" 
                     required
                     className="w-full bg-[#F8FAFC] border-2 border-[#CBD5E1] rounded-md px-4 py-3 text-[#0F172A] placeholder-[#94A3B8] focus:border-[#1E40AF] focus:ring-2 focus:ring-[#1E40AF]/20 focus:outline-none transition-all"
-                    placeholder={selectedRole === 'student' ? 'e.g. 01-134192-023' : 'Enter your university ID'}
+                    placeholder={selectedRole === 'student' ? 'e.g. 01-134192-029' : 'Enter your university ID'}
                     value={credentials.id}
                     onChange={(e) => setCredentials({...credentials, id: e.target.value})}
                   />
@@ -395,7 +395,7 @@ const Landing = () => {
                     type="password" 
                     required
                     className="w-full bg-[#F8FAFC] border-2 border-[#CBD5E1] rounded-md px-4 py-3 text-[#0F172A] placeholder-[#94A3B8] focus:border-[#1E40AF] focus:ring-2 focus:ring-[#1E40AF]/20 focus:outline-none transition-all"
-                    placeholder="Enter your password"
+                    placeholder="123"
                     value={credentials.password}
                     onChange={(e) => setCredentials({...credentials, password: e.target.value})}
                   />
